@@ -1,4 +1,5 @@
 ---@module 'pickers.smart.search'
+-- handrolled-ok: a retry stamp for a missing tool lookup, not a throttle
 ---@brief Runs fd (files) + rg (grep) for one query and returns raw candidates.
 ---@description
 --- Synchronous by design: every engine adapter calls this from inside its own
