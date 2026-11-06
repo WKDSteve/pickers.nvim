@@ -4,7 +4,7 @@
 
 ### Hard required
 
-- Neovim **0.10+** — `vim.uv` and `vim.system` are used unguarded (directory
+- Neovim **0.11+** — `vim.uv` and `vim.system` are used unguarded (directory
   navigation, the collection and repo sources, and the `smart` action's `rg`/
   `fd` calls all depend on them)
 - [lib.nvim](https://github.com/WKDSteve/lib.nvim)
