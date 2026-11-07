@@ -2365,6 +2365,34 @@ do
         end
       end
     end
+    -- answered later than the pick (the dialog answers on a later loop turn): nothing is deleted before, then as sync
+    for _, accept in ipairs({ false, true }) do
+      vim.fn.writefile({ "z" }, broot .. "/late.txt")
+      local pending
+      dialog.yesno = function(_, _, cb)
+        pending = cb
+      end
+      browse.open(broot, { engine_mod = fake_engine })
+      for _, e in ipairs(last_opts.items) do
+        if e.action == "delete" then delete_action = e end
+      end
+      last_opts.on_select(delete_action)
+      local late
+      for _, e in ipairs(last_opts.items) do
+        if e.text == "late.txt" then late = e end
+      end
+      last_opts.on_select(late)
+      check(
+        "browse: delete asked, file still there before the late answer (" .. tostring(accept) .. ")",
+        pending ~= nil and vim.fn.filereadable(broot .. "/late.txt") == 1
+      )
+      pending(accept)
+      check(
+        "browse: a late " .. (accept and "yes deletes" or "no keeps") .. " the file",
+        (vim.fn.filereadable(broot .. "/late.txt") == 1) == not accept
+      )
+      vim.fn.delete(broot .. "/late.txt")
+    end
     dialog.yesno = real_yesno
   end
   vim.fn.delete(broot, "rf")
