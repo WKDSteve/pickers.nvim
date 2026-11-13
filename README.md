@@ -97,3 +97,28 @@ and `:checkhealth pickers`.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 pickers.nvim is released under the [MIT License](https://opensource.org/licenses/MIT).
+
+<!-- connections:begin (written by the app-icons tool of the workshop; change integrations.json there, not this block) -->
+## Connections
+
+![pickers.nvim: what it uses and what uses it](assets/graphs/pickers.nvim.png)
+
+**Uses**
+
+- [fileops.nvim](https://github.com/WKDSteve/fileops.nvim): The browse mode of pickers.nvim uses the file operations of fileops.nvim (`fileops.ops.file`) when it is installed. ([picture](assets/graphs/pair/pickers.nvim--fileops.nvim.png))
+- [gopath.nvim](https://github.com/WKDSteve/gopath.nvim): pickers.nvim shortens a path with gopath.nvim (`gopath.env_shorten`) when it inserts a link. ([picture](assets/graphs/pair/pickers.nvim--gopath.nvim.png))
+- [images.nvim](https://github.com/WKDSteve/images.nvim): With images.nvim installed, pickers.nvim previews image entries as pictures; without it they preview as text. ([picture](assets/graphs/pair/pickers.nvim--images.nvim.png))
+- [pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim): pickers.nvim installs the `filetype_hook` of pdfport.nvim as the telescope preview of PDF entries, so a PDF shows its text and not binary noise (`pdfport.integrations.telescope`). ([picture](assets/graphs/pair/pickers.nvim--pdfport.nvim.png))
+- [ui.nvim](https://github.com/WKDSteve/ui.nvim): pickers.nvim asks for a new file name and for a system path with `ui.kit.input` of ui.nvim. ([picture](assets/graphs/pair/pickers.nvim--ui.nvim.png))
+- [lib.nvim](https://github.com/WKDSteve/lib.nvim): the shared base of the plugins.
+
+**Used by**
+
+- [data.nvim](https://github.com/WKDSteve/data.nvim): The filter of data.nvim runs through the refine step of pickers.nvim (`pickers.refine`) when it is installed. ([picture](assets/graphs/pair/data.nvim--pickers.nvim.png))
+- [diff.nvim](https://github.com/WKDSteve/diff.nvim): diff.nvim picks its sources through the engines of pickers.nvim (`pickers.engines`) when it is installed. ([picture](assets/graphs/pair/diff.nvim--pickers.nvim.png))
+- [filetree.nvim](https://github.com/WKDSteve/filetree.nvim): The create-from-template picker of filetree.nvim uses pickers.nvim (`pickers.engines`) for a preview; without it the kit picker or `ui_select` is used. ([picture](assets/graphs/pair/filetree.nvim--pickers.nvim.png))
+- [gitsuite.nvim](https://github.com/WKDSteve/gitsuite.nvim): gitsuite.nvim picks through the engines of pickers.nvim (`integrations.pickers_nvim`) when it is installed. ([picture](assets/graphs/pair/gitsuite.nvim--pickers.nvim.png))
+- [markdown.nvim](https://github.com/WKDSteve/markdown.nvim): The table list of markdown.nvim picks through pickers.nvim (`pickers.preview_modes`) unless `picker = "builtin"` is set. ([picture](assets/graphs/pair/markdown.nvim--pickers.nvim.png))
+- [replacer.nvim](https://github.com/WKDSteve/replacer.nvim): The in-picker `filter` key of replacer.nvim needs pickers.nvim (`pickers.refine`); everything else works without it. ([picture](assets/graphs/pair/replacer.nvim--pickers.nvim.png))
+- [tasks.nvim](https://github.com/WKDSteve/tasks.nvim): `:Tasks folder` of tasks.nvim uses pickers.nvim (`pickers.command`). ([picture](assets/graphs/pair/tasks.nvim--pickers.nvim.png))
+<!-- connections:end -->
