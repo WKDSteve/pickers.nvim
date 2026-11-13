@@ -13,8 +13,8 @@
 
 -- ── Self-bootstrapping runtimepath ──────────────────────────────────────────
 local this = debug.getinfo(1, "S").source:sub(2) -- strip leading '@'
-local tests_dir = vim.fn.fnamemodify(this, ":h")
-local root = vim.fn.fnamemodify(tests_dir, ":h:h") -- TESTS → repo root
+local tests_dir = vim.fn.fnamemodify(this, ":p:h") -- absolute, also for `nvim -l TESTS/...`
+local root = vim.fn.fnamemodify(tests_dir, ":h") -- TESTS → repo root
 vim.opt.runtimepath:append(root)
 
 -- $LIB_NVIM_PATH is the convention shared with lib.nvim's other dependents
