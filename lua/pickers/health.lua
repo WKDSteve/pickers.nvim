@@ -31,6 +31,16 @@ local function check_soft_dependencies()
       vim.health.info(("%s not installed: %s unavailable"):format(dep[2], dep[3]))
     end
   end
+  -- Not a module to require: whichever tree signed in at lib.nvim.explorer.
+  if require("pickers.entry_actions.tree_reveal").available() then
+    vim.health.ok(
+      "a file tree that can reveal a path is registered: reveal_in_tree shows entries in it"
+    )
+  else
+    vim.health.info(
+      "no file tree that can reveal a path is loaded (filetree.nvim): reveal_in_tree only says so"
+    )
+  end
 end
 
 ---Run all `:checkhealth pickers` sections: dependencies, picker engines, CLI
