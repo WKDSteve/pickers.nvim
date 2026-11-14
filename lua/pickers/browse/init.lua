@@ -48,8 +48,11 @@ local function norm(p)
 end
 
 ---The entries of `dir`, directories first (each with a trailing `/`),
----then files, both sorted case-insensitively; `..` first when `dir` has a
----parent; the action rows last. Pure apart from the directory read.
+---then files, both sorted by name case-insensitively -- the order
+---filetree.nvim's own tree shows the same folder in; a link to a directory is
+---a directory. `..` first when `dir` has a parent; the action rows last. Pure
+---apart from the directory read (always a fresh one: the listing has to show
+---what an action row just did, so it does not go through a cache).
 ---@param dir string
 ---@param opts Pickers.BrowseOpts|nil
 ---@return Pickers.BrowseEntry[]
@@ -58,21 +61,38 @@ function M.entries(dir, opts)
   dir = norm(dir)
   if vim.fn.isdirectory(dir) ~= 1 then return {} end
   local dirs, files = {}, {}
+  -- entry -> its name as read, and lower-cased: the sort keys (not `text`,
+  -- whose trailing `/` would put `foo-x/` before `foo/`)
+  local name_of, lower_of = {}, {}
   local ok = pcall(function()
     for name, kind in vim.fs.dir(dir) do
       if opts.hidden ~= false or name:sub(1, 1) ~= "." then
         local path = dir .. "/" .. name
-        if kind == "directory" then
-          dirs[#dirs + 1] = { text = name .. "/", path = path, kind = "dir" }
-        else
-          files[#files + 1] = { text = name, path = path, kind = "file", file = path }
+        local is_dir = kind == "directory"
+        if not is_dir and kind ~= "file" then
+          -- a link (a Windows junction too), or a file system that does not
+          -- say: what it points to decides, as in the tree
+          local stat = vim.uv.fs_stat(path)
+          is_dir = stat ~= nil and stat.type == "directory"
         end
+        local entry
+        if is_dir then
+          entry = { text = name .. "/", path = path, kind = "dir" }
+          dirs[#dirs + 1] = entry
+        else
+          entry = { text = name, path = path, kind = "file", file = path }
+          files[#files + 1] = entry
+        end
+        name_of[entry], lower_of[entry] = name, name:lower()
       end
     end
   end)
   if not ok then return {} end
+  -- The order of filetree.nvim's own tree (`filetree.native.source.files`, sort
+  -- by name): case-insensitive, names that differ in case only by their bytes.
   local function by_name(a, b)
-    return a.text:lower() < b.text:lower()
+    if lower_of[a] ~= lower_of[b] then return lower_of[a] < lower_of[b] end
+    return name_of[a] < name_of[b]
   end
   table.sort(dirs, by_name)
   table.sort(files, by_name)

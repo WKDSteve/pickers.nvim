@@ -10,6 +10,13 @@ a changelog.
 
 ---
 
+[x] **The directory browser sorts like the file tree; a link to a directory is a directory.**
+  `pickers.browse` sorted on the row text, whose trailing `/` put `foo-x/` and `foo.bar/` before `foo/`
+  (`-` and `.` sort before `/`), and listed a link to a directory (a Windows junction) as a file, which
+  picking then tried to edit. It now sorts by the name itself, case-insensitively, names that differ in case
+  only by their bytes (the rule of filetree.nvim's own tree, compared on real folders: same order, same time),
+  and asks what a link points to.
+
 [x] **`reveal_in_tree`: show a picker entry in the file tree.**
   New entry action on all three engines (`<M-s>`, chord `<leader>ft`, fzf-lua `alt-s`): the picker closes and
   the file tree opens with its cursor on the entry. The tree is asked through `lib.nvim.explorer`

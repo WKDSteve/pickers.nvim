@@ -2419,6 +2419,34 @@ do
   )
   check("browse.entries: unreadable dir -> empty", #browse.entries(broot .. "/nope") == 0)
 
+  -- The order of filetree.nvim's own tree: by name, not by the row text (whose
+  -- trailing `/` would sort `foo-x/` and `foo.bar/` before `foo/`), and a link
+  -- to a directory is a directory.
+  do
+    local oroot = vim.fn.tempname()
+    for _, name in ipairs({ "foo", "foo.bar", "Foo-x", "target" }) do
+      vim.fn.mkdir(oroot .. "/" .. name, "p")
+    end
+    for _, name in ipairs({ "a", "a.txt", "B.md" }) do
+      vim.fn.writefile({ "x" }, oroot .. "/" .. name)
+    end
+    -- a junction on Windows (needs no privilege), a symlink elsewhere
+    local linked = vim.uv.fs_symlink(oroot .. "/target", oroot .. "/zlink", { junction = true })
+    local got = vim.tbl_map(function(e)
+      return e.text
+    end, browse.entries(oroot, { actions = false }))
+    table.remove(got, 1) -- `../`
+    local want = { "foo/", "Foo-x/", "foo.bar/", "target/" }
+    if linked then want[#want + 1] = "zlink/" end
+    vim.list_extend(want, { "a", "a.txt", "B.md" })
+    check(
+      "browse.entries: sorted by name like the tree, a link to a directory is a directory",
+      vim.deep_equal(got, want),
+      vim.inspect(got)
+    )
+    vim.fn.delete(oroot, "rf")
+  end
+
   -- The flow: pick a dir -> reopened there; pick a file -> edited.
   local prompts, last_opts = {}, nil
   local fake_engine = {
