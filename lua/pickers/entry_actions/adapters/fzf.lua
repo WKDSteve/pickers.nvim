@@ -2,7 +2,7 @@
 ---@brief fzf-lua entry-action registrations: create_file + open_background +
 ---cheatsheet + path_copy (copy_absolute/copy_dirname/copy_env_rooted/
 ---copy_project_root/copy_project_relative/copy_buffer_relative/markdown_link)
----+ system (open_system/reveal_in_manager).
+---+ system (open_system/reveal_in_manager) + tree_reveal (reveal_in_tree, alt-s).
 ---@description
 --- fzf-lua action-table keys are fzf's own bind syntax ("ctrl-a", not
 --- Neovim's "<C-a>"), so unlike the telescope/snacks adapters this one does
@@ -50,6 +50,7 @@ local open_background = require("pickers.entry_actions.open_background")
 local path_copy = require("pickers.entry_actions.path_copy")
 local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
+local tree_reveal = require("pickers.entry_actions.tree_reveal")
 
 local M = {}
 
@@ -132,6 +133,23 @@ local function do_system(action)
 end
 
 ---@internal
+---Show the first selected entry in the file tree (see
+---pickers.entry_actions.tree_reveal). fzf-lua has already closed its process;
+---a refusal (no tree, no path) resumes the picker, a reveal does not -- the
+---tree is the answer.
+---@param selected table|string
+local function do_tree_reveal(selected)
+  local abs = tree_reveal.target(extract_all(selected)[1])
+  if not abs then
+    resume()
+    return
+  end
+  vim.defer_fn(function()
+    tree_reveal.run(abs)
+  end, 50)
+end
+
+---@internal
 ---@param selected table|string
 local function do_open_background(selected)
   local path = extract(selected)
@@ -178,6 +196,10 @@ local COPY_KEYS = {
 local LINK_INSERT_KEY = "alt-n"
 
 ---@internal
+---The fixed fzf key of the reveal-in-tree action.
+local TREE_REVEAL_KEY = "alt-s"
+
+---@internal
 ---The fixed fzf keys of the system actions, keyed by system action.
 ---@type table<string, string>
 local SYSTEM_KEYS = {
@@ -202,6 +224,7 @@ for action, key in pairs(SYSTEM_KEYS) do
   FZF_OVERRIDES[system.ACTION_FOR[action]] = key
 end
 FZF_OVERRIDES[link_insert.ACTION] = LINK_INSERT_KEY
+FZF_OVERRIDES[tree_reveal.ACTION] = TREE_REVEAL_KEY
 
 local function do_cheatsheet()
   -- Let the fzf terminal buffer finish closing before opening the panel
@@ -235,6 +258,7 @@ function M.get_actions()
     actions[key] = do_copy(fmt)
   end
   actions[LINK_INSERT_KEY] = do_link_insert
+  actions[TREE_REVEAL_KEY] = do_tree_reveal
   for action, key in pairs(SYSTEM_KEYS) do
     actions[key] = do_system(action)
   end

@@ -157,6 +157,7 @@ snacks. See `lua/pickers/keys/`.
 | `markdown_link_insert` | `<M-n>` · `MI` | ✓ | fixed (`alt-n`) | ✓ |
 | `open_system` | `<M-o>` · `<leader>sm` | ✓ | fixed (`alt-o`) | ✓ |
 | `reveal_in_manager` | `<M-x>` · `<leader>fm` | ✓ | fixed (`alt-x`) | ✓ |
+| `reveal_in_tree` | `<M-s>` · `<leader>ft` | ✓ | fixed (`alt-s`) | ✓ |
 
 For the path/system actions the first lhs is a **direct key** (Ctrl/Alt — works
 in the prompt, insert *and* normal mode); everything after the `·` is a
@@ -286,6 +287,15 @@ and the recursive Markdown-link variant (`MR` — a result row is one file, not 
 directory subtree). filetree.nvim's `gb` ("add to buffer list") is not
 duplicated either — `open_background` above already is that action here.
 
+**Show in the file tree.** `reveal_in_tree` (`<M-s>`, chord `<leader>ft`,
+fzf-lua `alt-s`) closes the picker and opens the file tree with its cursor on
+the current entry. Which tree is not pickers.nvim's business: the question goes
+to `lib.nvim.explorer`, where a tree plugin signs in (filetree.nvim does, for
+the backend it runs). The action is offered only while such a tree is loaded:
+without one the cheatsheet leaves the row out and the key answers with one line
+and keeps the picker open (fzf-lua, which has closed already, resumes). An
+entry that is not a file or directory on disk is refused the same way.
+
 **Why direct keys *and* chords.** A picker prompt is always in insert mode,
 where `[`, `a`, `M`, `L` are just characters of the query — filetree.nvim's
 chords can never fire there. So each action carries a direct Ctrl/Alt key
@@ -300,7 +310,7 @@ whose normal mode already covers both (`mappings.n`). fzf-lua's own `--bind`
 syntax has no concept of a multi-keystroke chord (it binds a single logical
 key, not a pending-key state machine), so its bindings are fixed to the same
 single physical keys the direct lhs resolve to (`ctrl-y`/`alt-y`/`alt-v`/
-`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`) — same class as its
+`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`/`alt-s`) — same class as its
 `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. The Alt keys are chosen to stay clear of
 the engines' own defaults (snacks `<A-d>`/`<A-f>`/`<A-h>`/`<A-i>`/`<A-m>`/
 `<A-p>`/`<A-r>`/`<A-w>`, fzf-lua `alt-a`/`alt-g`/`alt-q`/`alt-i`/`alt-h`/`alt-f`,

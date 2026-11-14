@@ -14,9 +14,10 @@ The path/system keys work in the prompt: `<C-y>` copies the absolute path,
 project root, `<M-e>`/`<M-j>` the path relative to the project root/the open
 buffer, `<M-l>` a Markdown link, `<M-o>` opens with the system default
 application and `<M-x>` reveals in the file manager — on `<Tab>`-selected
-entries when there are any. In normal mode filetree.nvim's chords work too
+entries when there are any. `<M-s>` shows the current entry in the file tree
+(closes the picker; listed only while a tree that can reveal is loaded). In normal mode filetree.nvim's chords work too
 (`[a`, `]a`, `[e`, `[R`, `]R`, `]b`, `[f`, `ML`, `MM`, `<leader>sm`,
-`<leader>fm`).
+`<leader>fm`, `<leader>ft`).
 
 ## :Pickers command syntax
 

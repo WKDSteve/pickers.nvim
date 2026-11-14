@@ -2,7 +2,7 @@
 ---@brief Telescope entry-action mappings: create_file + open_background +
 ---cheatsheet + path_copy (copy_absolute/copy_dirname/copy_env_rooted/
 ---copy_project_root/copy_project_relative/copy_buffer_relative/markdown_link)
----+ system (open_system/reveal_in_manager).
+---+ system (open_system/reveal_in_manager) + tree_reveal (reveal_in_tree).
 ---@description
 --- Single canonical source for these mappings — collapses the pre-existing
 --- duplicate config.telescope.actions.open_badd / config.telescope.open_background
@@ -20,6 +20,7 @@ local open_background = require("pickers.entry_actions.open_background")
 local path_copy = require("pickers.entry_actions.path_copy")
 local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
+local tree_reveal = require("pickers.entry_actions.tree_reveal")
 
 local M = {}
 
@@ -107,6 +108,21 @@ local function do_system(action)
 end
 
 ---@internal
+---Show the current entry in the file tree (see
+---pickers.entry_actions.tree_reveal). CLOSES the picker, but only once the
+---action can run: a refusal (no tree, no path) leaves it open.
+---@param prompt_bufnr integer
+local function do_tree_reveal(prompt_bufnr)
+  local action_state = require("telescope.actions.state")
+  local abs = tree_reveal.target(extract(action_state.get_selected_entry()))
+  if not abs then return end
+  require("telescope.actions").close(prompt_bufnr)
+  vim.schedule(function()
+    tree_reveal.run(abs)
+  end)
+end
+
+---@internal
 ---Entry-action: open the selected entry in the background window (see
 ---pickers.entry_actions.open_background), preserving cursor position when the
 ---entry carries a line/col.
@@ -149,6 +165,7 @@ function M.get_mappings()
   bind("open_background", do_open_background)
   bind("cheatsheet", do_cheatsheet)
   bind(link_insert.ACTION, do_link_insert)
+  bind(tree_reveal.ACTION, do_tree_reveal)
 
   for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
     bind(path_copy.ACTION_FOR[fmt], do_copy(fmt))

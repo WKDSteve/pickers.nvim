@@ -59,6 +59,7 @@ M.DESCRIPTIONS = {
   markdown_link_insert = "Insert Markdown link(s) into the window behind the picker",
   open_system = "Open with the system default application",
   reveal_in_manager = "Reveal in the system file manager",
+  reveal_in_tree = "Show in the file tree (closes the picker)",
   tab_next = "Next tab-group target",
   tab_prev = "Previous tab-group target",
 }
@@ -95,6 +96,16 @@ local GROUPS = {
     },
   },
   { "System", { "open_system", "reveal_in_manager" } },
+  { "Tree", { "reveal_in_tree" } },
+}
+
+---Actions that are listed only while they can do something, asked each time
+---the panel is built: a key that would answer "no file tree" is not offered.
+---@type table<string, fun(): boolean>
+local OFFERED = {
+  reveal_in_tree = function()
+    return require("pickers.entry_actions.tree_reveal").available()
+  end,
 }
 
 ---Build the display lines: grouped rows, one per action that is actually
@@ -112,8 +123,9 @@ function M.lines(overrides)
   local row_of = {}
   local widest = 0
   for _, action in ipairs(keys.ORDER) do
-    local lhs_display = overrides[action]
-    if not lhs_display then
+    local offered = OFFERED[action] == nil or OFFERED[action]()
+    local lhs_display = offered and overrides[action] or nil
+    if offered and not lhs_display then
       local spec = resolved[action]
       if spec and #spec.lhs > 0 then lhs_display = table.concat(spec.lhs, " / ") end
     end

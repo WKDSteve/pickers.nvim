@@ -18,6 +18,7 @@ path_copy.lua            Engine-agnostic: notify + setreg("+"/'"') -- absolute/d
                           project_root/project_relative/buffer_relative/markdown_link formats for
                           the selected entries' paths
 system.lua               Engine-agnostic: notify + lib.nvim.cross.open_default / reveal_in_fm
+tree_reveal.lua          Engine-agnostic: show the entry in the file tree, asked through lib.nvim.explorer
 extract/
   telescope.lua           entry -> path
   fzf.lua                 selected -> path (ANSI/icon-strip included)
@@ -146,6 +147,22 @@ plain Neovim floats — the panel just opens on top). fzf-lua is the exception:
 its action table always closes the running fzf process first, so its
 `do_cheatsheet` reopens fzf (`fzf.resume()`) once the panel closes.
 
+## Show in the file tree
+
+`reveal_in_tree` (`<M-s>` · `<leader>ft`, fzf-lua `alt-s`) closes the picker and
+opens the file tree with its cursor on the current entry
+(`tree_reveal.lua`). The tree is asked through `lib.nvim.explorer`
+(`can_reveal()` / `reveal(path)`), the registry tree plugins sign in to;
+nothing here names neo-tree, nvim-tree or filetree.nvim.
+
+The engines take their key tables once, at setup, so the key is bound whether
+or not a tree is loaded. Whether the action is *offered* is asked when it
+matters: the cheatsheet lists the row only while `tree_reveal.available()`,
+and each adapter asks `tree_reveal.target(path)` while the picker is still
+open. A refusal (no tree, no path, a path that is not on disk) is one line and
+the picker stays (fzf-lua resumes); only then is the picker closed and
+`tree_reveal.run(abs)` scheduled.
+
 ## Feedback: did it work?
 
 Every copy / open / reveal / insert action reports what it did — `copied
@@ -222,6 +239,7 @@ require("pickers").setup({
     markdown_link_insert  = { "<M-n>", "MI" },
     open_system           = { "<M-o>", "<leader>sm" },
     reveal_in_manager     = { "<M-x>", "<leader>fm" },
+    reveal_in_tree        = { "<M-s>", "<leader>ft" },
     -- ...preview_scroll_*/history_* also live here, see docs/keymaps.md
   },
 })
@@ -231,7 +249,7 @@ The adapters above call `require("pickers.keys").resolve()` to read these —
 they don't read `pickers.config` directly. They use Neovim keymap syntax and
 are honoured by the **telescope and snacks** adapters directly. **fzf-lua's
 bindings are fixed** (`ctrl-a`/`ctrl-o`/`shift-enter`/`f1`/`ctrl-y`/`alt-y`/
-`alt-v`/`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`) — fzf-lua's
+`alt-v`/`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`/`alt-s`) — fzf-lua's
 action-table keys are fzf's own bind syntax ("ctrl-a"), not Neovim keymap
 syntax ("<C-a>"), and there is no general, safe way to translate one to the
 other (the chords like `[a` have no fzf equivalent at all — see the table

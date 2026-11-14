@@ -133,10 +133,11 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `markdown_link_insert` | `<M-n>` · chord `MI` | patched | fixed (`alt-n`) | export only¹ |
 | `open_system` | `<M-o>` · chord `<leader>sm` | patched | fixed (`alt-o`) | export only¹ |
 | `reveal_in_manager` | `<M-x>` · chord `<leader>fm` | patched | fixed (`alt-x`) | export only¹ |
+| `reveal_in_tree` | `<M-s>` · chord `<leader>ft` | patched | fixed (`alt-s`) | export only¹ |
 | `tab_next` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap: no Lua in `keymap.builtin`) | export only¹ + `keys.snacks_actions()` |
 | `tab_prev` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap) | export only¹ + `keys.snacks_actions()` |
 
-The path-copy/system rows carry a **direct key** (Ctrl/Alt, bound in insert *and* normal mode — the prompt is always in insert mode) and filetree.nvim's **chords** (`[a`, `ML`, `<leader>sm`, …), which bind in normal mode only so they never swallow typed characters. Copies act on the `<Tab>`-selected entries, else the current one. See [docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions).
+The path-copy/system rows carry a **direct key** (Ctrl/Alt, bound in insert *and* normal mode — the prompt is always in insert mode) and filetree.nvim's **chords** (`[a`, `ML`, `<leader>sm`, …), which bind in normal mode only so they never swallow typed characters. Copies act on the `<Tab>`-selected entries, else the current one. `reveal_in_tree` closes the picker and shows the entry in the file tree; it needs a tree that can reveal a path (filetree.nvim, asked through `lib.nvim.explorer`) and says so when there is none. See [docs/keymaps.md](keymaps.md#in-picker-keys-preview-scroll--history--entry-actions).
 
 ¹ snacks: pickers.nvim doesn't own `Snacks.setup()`, but snacks reads `Snacks.config.picker` each time a picker opens — so the keys are patched into that table once snacks is loaded (`pickers.entry_actions.patch`), a key you already bound winning. `keys.snacks_win()` stays exported for merging by hand.
 

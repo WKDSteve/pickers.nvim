@@ -171,6 +171,7 @@ require("pickers").setup({
     markdown_link_insert  = { "<M-n>", "MI" }, -- INSERT the links into the window behind the picker
     open_system           = { "<M-o>", "<leader>sm" },
     reveal_in_manager     = { "<M-x>", "<leader>fm" },
+    reveal_in_tree        = { "<M-s>", "<leader>ft" }, -- show the entry in the file tree (closes the picker)
     -- fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     -- ctrl-o/shift-enter entry actions -- everything else is fzf-native/fixed.
     -- split/vsplit/tab are fzf-native too (fixed ctrl-s/ctrl-v/ctrl-t), and

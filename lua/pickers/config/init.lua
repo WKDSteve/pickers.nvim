@@ -109,6 +109,7 @@ local KEYS_ACTIONS = {
   "markdown_link_insert",
   "open_system",
   "reveal_in_manager",
+  "reveal_in_tree",
   -- Opt-in tab-group switch actions (pickers.keys.ACTIONS.tab_next/tab_prev).
   "tab_next",
   "tab_prev",

@@ -10,6 +10,14 @@ a changelog.
 
 ---
 
+[x] **`reveal_in_tree`: show a picker entry in the file tree.**
+  New entry action on all three engines (`<M-s>`, chord `<leader>ft`, fzf-lua `alt-s`): the picker closes and
+  the file tree opens with its cursor on the entry. The tree is asked through `lib.nvim.explorer`
+  (`can_reveal()` / `reveal(path)`), so pickers.nvim names no tree plugin; filetree.nvim signs in there.
+  Offered only while such a tree is loaded: otherwise the cheatsheet leaves the row out and the key says so
+  and keeps the picker open (fzf-lua resumes). An entry that is not on disk is refused the same way.
+  New: `pickers.entry_actions.tree_reveal` (`available()`, `target(path)`, `run(abs)`).
+
 [x] **`:Pickers builtin <unknown>` offers the builtins instead of the `<Tab>` hint.**
   A name that is not registered now opens a choice of every builtin (names containing the typed text first,
   then by edit distance) through lib.nvim's `ui.kit.select` (`vim.ui.select` as fallback); the pick runs, a

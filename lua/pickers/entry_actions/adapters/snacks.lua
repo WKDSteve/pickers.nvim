@@ -2,7 +2,7 @@
 ---@brief snacks.nvim entry-action registrations: create_file + open_background +
 ---cheatsheet + path_copy (copy_absolute/copy_dirname/copy_env_rooted/
 ---copy_project_root/copy_project_relative/copy_buffer_relative/markdown_link)
----+ system (open_system/reveal_in_manager).
+---+ system (open_system/reveal_in_manager) + tree_reveal (reveal_in_tree).
 ---@description
 --- Two-part registration, matching Snacks.picker's own convention: named
 --- actions via `get_actions()` (merged into `opts.actions`), plus separate
@@ -29,6 +29,7 @@ local open_background = require("pickers.entry_actions.open_background")
 local path_copy = require("pickers.entry_actions.path_copy")
 local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
+local tree_reveal = require("pickers.entry_actions.tree_reveal")
 
 local M = {}
 
@@ -118,6 +119,24 @@ local function do_system(action)
 end
 
 ---@internal
+---Show the current item in the file tree (see
+---pickers.entry_actions.tree_reveal). CLOSES the picker, but only once the
+---action can run: a refusal (no tree, no path) leaves it open.
+---@param picker any
+---@param item any
+local function do_tree_reveal(picker, item)
+  local abs = tree_reveal.target(extract(item))
+  if not abs then return end
+  if picker then
+    ---@diagnostic disable-next-line: undefined-field
+    picker:close()
+  end
+  vim.schedule(function()
+    tree_reveal.run(abs)
+  end)
+end
+
+---@internal
 ---@param picker any
 ---@param item any
 local function do_open_background(picker, item)
@@ -152,6 +171,7 @@ function M.get_actions()
     open_background = { action = do_open_background, desc = desc.open_background },
     cheatsheet = { action = do_cheatsheet, desc = desc.cheatsheet },
     [link_insert.ACTION] = { action = do_link_insert, desc = desc[link_insert.ACTION] },
+    [tree_reveal.ACTION] = { action = do_tree_reveal, desc = desc[tree_reveal.ACTION] },
   }
   for fmt, action_name in pairs(path_copy.ACTION_FOR) do
     actions[action_name] = { action = do_copy(fmt), desc = desc[action_name] }
@@ -173,6 +193,7 @@ local function action_names()
   for _, action_name in pairs(system.ACTION_FOR) do
     names[#names + 1] = action_name
   end
+  names[#names + 1] = tree_reveal.ACTION
   return names
 end
 

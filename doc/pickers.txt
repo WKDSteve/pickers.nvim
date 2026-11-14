@@ -697,6 +697,12 @@ All keys are optional.  Unset keys retain their default values.
       reveal_in_manager    (string|string[]|false, default { "<M-x>",
                              "<leader>fm" }) — reveal it in the system file
                              manager; fixed to alt-x on fzf-lua
+      reveal_in_tree       (string|string[]|false, default { "<M-s>",
+                             "<leader>ft" }) — show it in the file tree
+                             (closes the picker); needs a tree that can
+                             reveal a path, asked through
+                             lib.nvim.explorer (filetree.nvim); fixed to
+                             alt-s on fzf-lua
     fzf-lua only binds the vertical preview scroll and the fixed ctrl-a/
     ctrl-o/shift-enter/f1 and ctrl-y/alt-y/alt-v/alt-t/alt-e/alt-j/alt-l/
     alt-o/alt-x entry actions —

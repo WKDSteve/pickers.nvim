@@ -1664,6 +1664,196 @@ do
   )
 end
 
+-- ── pickers.entry_actions.tree_reveal — show the entry in the file tree ─────
+-- The tree is asked through lib.nvim.explorer; a stand-in takes its place, so
+-- nothing here depends on a tree plugin (or on how new the lib.nvim beside the
+-- repo is).
+do
+  local tree_reveal = require("pickers.entry_actions.tree_reveal")
+  local prev_explorer = package.loaded["lib.nvim.explorer"]
+  local asked = {}
+  local can, answer = true, true
+  local function stand_in()
+    package.loaded["lib.nvim.explorer"] = {
+      can_reveal = function()
+        return can
+      end,
+      reveal = function(path)
+        asked[#asked + 1] = path
+        if answer == "raise" then error("tree broke") end
+        return answer, "filetree"
+      end,
+    }
+  end
+
+  local real = vim.fn.tempname() .. "_tree_reveal.txt"
+  vim.fn.writefile({ "x" }, real)
+  local target = vim.fn.fnamemodify(real, ":p")
+
+  -- a lib.nvim whose explorer cannot reveal yet: not offered
+  package.loaded["lib.nvim.explorer"] = { current_path = function() end }
+  check("tree_reveal.available: an explorer without reveal -> false", not tree_reveal.available())
+  check("tree_reveal.target: no tree -> nil", tree_reveal.target(real) == nil)
+
+  stand_in()
+  can = false
+  check("tree_reveal.available: no tree can reveal -> false", not tree_reveal.available())
+  can = true
+  check("tree_reveal.available: a tree can reveal -> true", tree_reveal.available())
+  check(
+    "tree_reveal.target: an existing file -> its absolute path",
+    tree_reveal.target(real) == target
+  )
+  check(
+    "tree_reveal.target: nil, empty, a display label -> nil",
+    tree_reveal.target(nil) == nil
+      and tree_reveal.target("") == nil
+      and tree_reveal.target("Some Display Label") == nil
+  )
+  check("tree_reveal.target: asking does not reveal", #asked == 0)
+  check(
+    "tree_reveal.run: hands the tree the path",
+    tree_reveal.run(target) == true and asked[1] == target,
+    tostring(asked[1])
+  )
+  answer = false
+  check("tree_reveal.run: the tree says no -> false", tree_reveal.run(target) == false)
+  answer = "raise"
+  check("tree_reveal.run: a tree that raises -> false", tree_reveal.run(target) == false)
+  answer = true
+
+  local keys = require("pickers.keys")
+  local r = keys.resolve(require("pickers.config").get())
+  check(
+    "keys.resolve: reveal_in_tree carries <M-s> and the chord <leader>ft",
+    has(r.reveal_in_tree.lhs, "<M-s>") and has(r.reveal_in_tree.lhs, "<leader>ft")
+  )
+
+  ---Let the scheduled/deferred reveal run; true when the tree was asked `n` times.
+  local function asked_n(n)
+    vim.wait(1000, function()
+      return #asked >= n
+    end, 10)
+    return #asked == n
+  end
+
+  -- telescope: closes the picker only when the action can run
+  local prev_state = package.loaded["telescope.actions.state"]
+  local prev_actions = package.loaded["telescope.actions"]
+  local entry, closed = { path = real }, 0
+  package.loaded["telescope.actions.state"] = {
+    get_selected_entry = function()
+      return entry
+    end,
+  }
+  package.loaded["telescope.actions"] = {
+    close = function()
+      closed = closed + 1
+    end,
+  }
+  local tm = require("pickers.entry_actions.adapters.telescope").get_mappings()
+  check(
+    "entry_actions.telescope: reveal_in_tree <M-s> (i, n), <leader>ft (n only)",
+    tm.i["<M-s>"] ~= nil
+      and tm.n["<M-s>"] ~= nil
+      and tm.n["<leader>ft"] ~= nil
+      and tm.i["<leader>ft"] == nil
+  )
+  asked = {}
+  tm.i["<M-s>"](1)
+  check(
+    "entry_actions.telescope: reveal closes the picker, then asks the tree",
+    closed == 1 and asked_n(1) and asked[1] == target
+  )
+  can = false
+  tm.i["<M-s>"](1)
+  check("entry_actions.telescope: no tree -> the picker stays open", closed == 1)
+  can = true
+  entry = { path = real .. ".missing" }
+  tm.i["<M-s>"](1)
+  check(
+    "entry_actions.telescope: an entry that is no file -> stays open, tree not asked",
+    closed == 1 and asked_n(1)
+  )
+  package.loaded["telescope.actions.state"] = prev_state
+  package.loaded["telescope.actions"] = prev_actions
+
+  -- snacks
+  local snacks_adapter = require("pickers.entry_actions.adapters.snacks")
+  local sa = snacks_adapter.get_actions()
+  local sik = snacks_adapter.get_input_keys()
+  check(
+    "entry_actions.snacks: reveal_in_tree is a named action with a desc, keyed in both windows",
+    type(sa.reveal_in_tree) == "table"
+      and type(sa.reveal_in_tree.desc) == "string"
+      and snacks_adapter.get_keys()["<leader>ft"] == "reveal_in_tree"
+      and sik["<M-s>"][1] == "reveal_in_tree"
+      and has(sik["<M-s>"].mode, "i")
+      and vim.deep_equal(sik["<leader>ft"].mode, { "n" })
+  )
+  local snacks_closed = 0
+  local picker = {
+    close = function()
+      snacks_closed = snacks_closed + 1
+    end,
+  }
+  asked = {}
+  sa.reveal_in_tree.action(picker, { file = real })
+  check(
+    "entry_actions.snacks: reveal closes the picker, then asks the tree",
+    snacks_closed == 1 and asked_n(1) and asked[1] == target
+  )
+  can = false
+  sa.reveal_in_tree.action(picker, { file = real })
+  check("entry_actions.snacks: no tree -> the picker stays open", snacks_closed == 1)
+  can = true
+
+  -- fzf-lua: its process is closed already; a refusal resumes it, a reveal does not
+  local prev_fzf = package.loaded["fzf-lua"]
+  local resumed = 0
+  package.loaded["fzf-lua"] = {
+    resume = function()
+      resumed = resumed + 1
+    end,
+  }
+  local fa = require("pickers.entry_actions.adapters.fzf").get_actions()
+  check("entry_actions.fzf: alt-s (reveal_in_tree) present", type(fa["alt-s"]) == "function")
+  asked = {}
+  fa["alt-s"]({ path = real })
+  check("entry_actions.fzf: reveal asks the tree", asked_n(1) and asked[1] == target)
+  vim.wait(150)
+  check("entry_actions.fzf: a reveal does not resume the picker", resumed == 0)
+  can = false
+  fa["alt-s"]({ path = real })
+  vim.wait(1000, function()
+    return resumed > 0
+  end, 10)
+  check("entry_actions.fzf: no tree -> the picker is resumed", resumed == 1 and #asked == 1)
+  can = true
+  package.loaded["fzf-lua"] = prev_fzf
+
+  -- cheatsheet: the row is there only while a tree can reveal
+  local cheatsheet = require("pickers.cheatsheet")
+  local with = table.concat(cheatsheet.lines(), "\n")
+  check(
+    "cheatsheet: reveal_in_tree is listed with its keys while a tree can reveal",
+    with:find("<M-s> / <leader>ft", 1, true) ~= nil
+      and with:find("Show in the file tree", 1, true) ~= nil
+  )
+  can = false
+  local without = table.concat(cheatsheet.lines(), "\n")
+  local without_fzf = table.concat(cheatsheet.lines({ reveal_in_tree = "alt-s" }), "\n")
+  check(
+    "cheatsheet: without such a tree the row is left out, on fzf-lua too",
+    without:find("Show in the file tree", 1, true) == nil
+      and without:find(" Tree", 1, true) == nil
+      and without_fzf:find("Show in the file tree", 1, true) == nil
+  )
+
+  vim.fn.delete(real)
+  package.loaded["lib.nvim.explorer"] = prev_explorer
+end
+
 -- ── default direct keys must not shadow an engine's own default ─────────────
 -- Read off the installed engines' defaults (snacks picker/config/defaults.lua,
 -- telescope mappings.lua, fzf-lua defaults.lua keymap.fzf/actions.files) plus

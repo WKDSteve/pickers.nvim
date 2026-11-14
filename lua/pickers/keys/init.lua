@@ -76,7 +76,9 @@
 --- `pickers.entry_actions.path_copy`) -- the curated subset of filetree.nvim's
 --- path-copy family that still makes sense on a picker result row -- and
 --- `open_system`/`reveal_in_manager` hand the entry to the OS (default
---- application / file manager, `pickers.entry_actions.system`). "Selected"
+--- application / file manager, `pickers.entry_actions.system`);
+--- `reveal_in_tree` shows it in the file tree instead
+--- (`pickers.entry_actions.tree_reveal`, fzf-lua `alt-s`). "Selected"
 --- follows filetree.nvim's marks idiom: the multi-selection (Tab) when there
 --- is one, else the current entry.
 ---
@@ -187,6 +189,12 @@ M.ACTIONS = {
     modes = { "i", "n" },
     chord_modes = { "n" },
   },
+  -- Show the entry in the file tree (pickers.entry_actions.tree_reveal).
+  reveal_in_tree = {
+    default = { "<M-s>", "<leader>ft" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
   -- Opt-in (false = unbound): switch to the next/previous target of the
   -- active pickers.tabs group, the typed query carried along. Unbound by
   -- default because <Tab> is telescope's multi-select toggle -- a host that
@@ -224,6 +232,7 @@ M.ORDER = {
   "markdown_link_insert",
   "open_system",
   "reveal_in_manager",
+  "reveal_in_tree",
   "tab_next",
   "tab_prev",
 }

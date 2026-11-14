@@ -74,6 +74,7 @@ local SKIP = {
   markdown_link_insert = true,
   open_system = true,
   reveal_in_manager = true,
+  reveal_in_tree = true,
 }
 
 --- The pickers.nvim-side actions snacks resolves by name from the `win`

@@ -198,6 +198,11 @@ local M = {
     -- with the default application / reveal in the file manager.
     open_system = { "<M-o>", "<leader>sm" },
     reveal_in_manager = { "<M-x>", "<leader>fm" },
+    -- Show the current entry in the file tree (pickers.entry_actions.tree_reveal):
+    -- closes the picker, the tree opens with its cursor on the entry. Does
+    -- something only when a tree that can reveal a path is loaded
+    -- (filetree.nvim, through lib.nvim.explorer).
+    reveal_in_tree = { "<M-s>", "<leader>ft" },
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.

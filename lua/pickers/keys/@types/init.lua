@@ -34,6 +34,7 @@
 ---@field markdown_link_insert? Pickers.KeyBinding INSERT the entries as Markdown links into the window behind the picker (closes it, cursor into the first link). Default: { "<M-n>", "MI" }
 ---@field open_system?          Pickers.KeyBinding Open the current entry with the system default application. Default: { "<M-o>", "<leader>sm" }
 ---@field reveal_in_manager?    Pickers.KeyBinding Reveal the current entry in the system file manager. Default: { "<M-x>", "<leader>fm" }
+---@field reveal_in_tree?       Pickers.KeyBinding Show the current entry in the file tree (closes the picker; needs a tree that can reveal, e.g. filetree.nvim). Default: { "<M-s>", "<leader>ft" }
 ---@field tab_next?             Pickers.KeyBinding Next target of the active tab group. Default: false (opt-in)
 ---@field tab_prev?             Pickers.KeyBinding Previous target of the active tab group. Default: false (opt-in)
 

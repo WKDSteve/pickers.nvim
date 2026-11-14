@@ -43,12 +43,12 @@ The part that costs the most and shows the least: preview scrolling, history
 navigation and the entry actions are defined **once** and translated per
 engine, so the same key does the same thing on telescope, fzf-lua and snacks.
 
-Twenty-three actions, covering preview scroll (four directions), history back
+Twenty-four actions, covering preview scroll (four directions), history back
 and forward, `create_file`, `open_background`, `preview_toggle`, `split`,
 `vsplit`, `tab`, `mouse_confirm`, `cheatsheet`, the path-copy family
 (`copy_absolute`, `copy_dirname`, `copy_env_rooted`, `copy_project_root`,
 `copy_project_relative`, `copy_buffer_relative`, `markdown_link`) and the
-system actions (`open_system`, `reveal_in_manager`).
+system actions (`open_system`, `reveal_in_manager`), plus `reveal_in_tree`.
 
 **fzf-lua is the capability gap, and it is a real one.** Its builtin previewer
 has no horizontal preview scroll; its history is fzf's own `--history` bound to
@@ -174,6 +174,7 @@ that still makes sense on a picker result row (a plain path string, not a
 | `markdown_link_insert` | `<M-n>` · `MI` | inserts the links into the window behind the picker |
 | `open_system` | `<M-o>` · `<leader>sm` | opens with the OS default application |
 | `reveal_in_manager` | `<M-x>` · `<leader>fm` | shows the entry in the system file manager |
+| `reveal_in_tree` | `<M-s>` · `<leader>ft` | shows the entry in the file tree (closes the picker) |
 
 **Marks are the picker's multi-selection.** filetree.nvim copies "the marked
 nodes if any, else the node under the cursor"; here `<Tab>` selects entries and
@@ -183,6 +184,15 @@ only. Deliberately not ported: trash, and the recursive Markdown-link variant
 (`MR`, a result row is one file, not a directory subtree). filetree.nvim's `gb`
 ("add to buffer list") is not duplicated either — `open_background` above
 already is that action here.
+
+**Show in the file tree.** `reveal_in_tree` (`<M-s>`, chord `<leader>ft`,
+fzf-lua `alt-s`) closes the picker and opens the file tree with its cursor on
+the current entry. Which tree is not pickers.nvim's business: the question goes
+to `lib.nvim.explorer`, where a tree plugin signs in (filetree.nvim does, for
+the backend it runs). The action is offered only while such a tree is loaded:
+without one the cheatsheet leaves the row out and the key answers with one line
+and keeps the picker open (fzf-lua, which has closed already, resumes). An
+entry that is not a file or directory on disk is refused the same way.
 
 Unlike every other entry action, the copies do **not** close the picker on
 telescope/snacks (filetree.nvim's own path-copy is non-disruptive); fzf-lua
@@ -204,7 +214,7 @@ prompt buffer's normal mode already covers both cases. fzf's own `--bind`
 syntax additionally has no concept of a multi-keystroke chord (a single logical
 key, not a pending-key state machine), so its bindings are fixed to the same
 single physical keys the direct lhs resolve to — `ctrl-y`/`alt-y`/`alt-v`/
-`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`, same class as its
+`alt-t`/`alt-e`/`alt-j`/`alt-l`/`alt-o`/`alt-x`/`alt-s`, same class as its
 `ctrl-a`/`ctrl-o`/`shift-enter`/`f1`. The Alt keys stay clear of the engines'
 own defaults (snacks `<A-d>`/`<A-f>`/`<A-h>`/`<A-i>`/`<A-m>`/`<A-p>`/`<A-r>`/`<A-w>`,
 fzf-lua `alt-a`/`alt-g`/`alt-q`/`alt-i`/`alt-h`/`alt-f`, fzf's `alt-b`/`alt-f`/`alt-d`);
@@ -216,8 +226,9 @@ plain absolute path when unset or the entry is outside it.
 
 - **Module:** [`entry_actions/path_copy.lua`](../../lua/pickers/entry_actions/path_copy.lua),
   [`entry_actions/system.lua`](../../lua/pickers/entry_actions/system.lua),
+  [`entry_actions/tree_reveal.lua`](../../lua/pickers/entry_actions/tree_reveal.lua),
   adapters in `entry_actions/{extract,adapters}/`
 - **Config:** `keys.copy_absolute`, `keys.copy_dirname`, `keys.copy_env_rooted`,
   `keys.copy_project_root`, `keys.copy_project_relative`,
   `keys.copy_buffer_relative`, `keys.markdown_link`, `keys.open_system`,
-  `keys.reveal_in_manager` — each a single lhs, a list, or `false`
+  `keys.reveal_in_manager`, `keys.reveal_in_tree` — each a single lhs, a list, or `false`
