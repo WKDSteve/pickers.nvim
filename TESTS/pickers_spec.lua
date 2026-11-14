@@ -1850,8 +1850,39 @@ do
       and without_fzf:find("Show in the file tree", 1, true) == nil
   )
 
-  vim.fn.delete(real)
   package.loaded["lib.nvim.explorer"] = prev_explorer
+
+  -- The contract itself, on the real lib.nvim.explorer: a tree that signs in
+  -- with `reveal` is asked, with the path, and its name comes back. A change
+  -- of that signature in lib.nvim shows here, not in a picker.
+  do
+    local explorer = require("lib.nvim.explorer")
+    local before = tree_reveal.available()
+    local got = {}
+    explorer.register({
+      name = "pickers_spec_tree",
+      filetypes = { "pickers_spec_tree" },
+      reveal = function(path)
+        got[#got + 1] = path
+        return true
+      end,
+    })
+    check(
+      "tree_reveal on the real lib.nvim.explorer: no tree signed in -> not offered, one -> offered",
+      before == false and tree_reveal.available() == true
+    )
+    check(
+      "tree_reveal on the real lib.nvim.explorer: the tree gets the path",
+      tree_reveal.run(target) == true and got[1] == target,
+      vim.inspect(got)
+    )
+    explorer.unregister("pickers_spec_tree")
+    check(
+      "tree_reveal on the real lib.nvim.explorer: gone again once the tree signs out",
+      tree_reveal.available() == false
+    )
+  end
+  vim.fn.delete(real)
 end
 
 -- ── default direct keys must not shadow an engine's own default ─────────────
