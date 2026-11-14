@@ -116,9 +116,11 @@ pickers.nvim is released under the [MIT License](https://opensource.org/licenses
 
 - [data.nvim](https://github.com/WKDSteve/data.nvim): The filter of data.nvim runs through the refine step of pickers.nvim (`pickers.refine`) when it is installed. ([picture](assets/graphs/pair/data.nvim--pickers.nvim.png))
 - [diff.nvim](https://github.com/WKDSteve/diff.nvim): diff.nvim picks its sources through the engines of pickers.nvim (`pickers.engines`) when it is installed. ([picture](assets/graphs/pair/diff.nvim--pickers.nvim.png))
+- [docmap.nvim](https://github.com/WKDSteve/docmap.nvim): `:DocMap pick` lets you pick a route in an engine of pickers.nvim. ([picture](assets/graphs/pair/docmap.nvim--pickers.nvim.png))
 - [filetree.nvim](https://github.com/WKDSteve/filetree.nvim): The create-from-template picker of filetree.nvim uses pickers.nvim (`pickers.engines`) for a preview; without it the kit picker or `ui_select` is used. ([picture](assets/graphs/pair/filetree.nvim--pickers.nvim.png))
 - [gitsuite.nvim](https://github.com/WKDSteve/gitsuite.nvim): gitsuite.nvim picks through the engines of pickers.nvim (`integrations.pickers_nvim`) when it is installed. ([picture](assets/graphs/pair/gitsuite.nvim--pickers.nvim.png))
 - [markdown.nvim](https://github.com/WKDSteve/markdown.nvim): The table list of markdown.nvim picks through pickers.nvim (`pickers.preview_modes`) unless `picker = "builtin"` is set. ([picture](assets/graphs/pair/markdown.nvim--pickers.nvim.png))
 - [replacer.nvim](https://github.com/WKDSteve/replacer.nvim): The in-picker `filter` key of replacer.nvim needs pickers.nvim (`pickers.refine`); everything else works without it. ([picture](assets/graphs/pair/replacer.nvim--pickers.nvim.png))
+- [rules.nvim](https://github.com/WKDSteve/rules.nvim): `find` and `grep` of the rules vault open a picker of pickers.nvim rooted at a ruleset, a family or a part. ([picture](assets/graphs/pair/rules.nvim--pickers.nvim.png))
 - [tasks.nvim](https://github.com/WKDSteve/tasks.nvim): `:Tasks folder` of tasks.nvim uses pickers.nvim (`pickers.command`). ([picture](assets/graphs/pair/tasks.nvim--pickers.nvim.png))
 <!-- connections:end -->
