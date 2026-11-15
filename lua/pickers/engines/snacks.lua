@@ -337,8 +337,11 @@ function M.pick_item(opts)
     ---@param picker table
     ---@return Pickers.ItemEnv
     local function env_of(picker)
+      -- snacks lets rows be marked in every list; a call without `multi` did
+      -- not ask for marks and acts on the row under the cursor
+      local chosen = opts.multi and picker:selected({ fallback = true }) or { picker:current() }
       local idxs = {}
-      for _, it in ipairs(picker:selected({ fallback = true })) do
+      for _, it in pairs(chosen) do
         if it and it.idx then idxs[#idxs + 1] = it.idx end
       end
       table.sort(idxs)

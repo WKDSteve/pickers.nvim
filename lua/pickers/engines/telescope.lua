@@ -355,7 +355,9 @@ function M.pick_item(opts)
   ---@param bufnr integer
   ---@return Pickers.ItemEnv
   local function env_of(bufnr)
-    local picker = action_state.get_current_picker(bufnr)
+    -- telescope lets rows be marked in every list; a call without `multi` did
+    -- not ask for marks and acts on the row under the cursor
+    local picker = opts.multi and action_state.get_current_picker(bufnr) or nil
     local marked = picker and picker:get_multi_selection() or {}
     table.sort(marked, function(a, b)
       return (a.index or 0) < (b.index or 0)

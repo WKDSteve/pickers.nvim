@@ -462,6 +462,21 @@ do
     plain.item == rows[1] and plain.env == nil and captured.default_text == nil
   )
 
+  -- telescope marks in every list: a call without `multi` acts on the cursor row
+  ran, mapped = {}, {}
+  tel.pick_item({
+    items = rows,
+    prompt = "T",
+    keys = recording_keys(ran),
+    on_select = function() end,
+  })
+  multi, current = { { value = rows[3], index = 3 } }, { value = rows[1], index = 1 }
+  mapped["<M-s>"].fn(7)
+  check(
+    "telescope: without multi a key acts on the row under the cursor, whatever is marked",
+    #ran[1].items == 1 and ran[1].items[1] == rows[1]
+  )
+
   mapped = {}
   tel.pick_item({
     items = rows,
@@ -560,6 +575,24 @@ do
   )
   captured.on_choice(nil) -- what `select` sends after a close without a choice of its own
   check("snacks: the close that follows is not a second pick", #picked == 1)
+
+  -- snacks marks in every list: a call without `multi` acts on the cursor row
+  ran = {}
+  sn.pick_item({
+    items = rows,
+    prompt = "S",
+    keys = recording_keys(ran),
+    on_select = function() end,
+  })
+  picker.current = function()
+    return { idx = 2, item = { text = "a copy" } }
+  end
+  local only = captured.opts.snacks
+  only.actions[only.win.input.keys["<a-s>"][1]](picker)
+  check(
+    "snacks: without multi a key acts on the row under the cursor, whatever is marked",
+    #ran[1].items == 1 and ran[1].items[1] == rows[2] and only.actions.confirm == nil
+  )
 
   sn.pick_item({ items = rows, prompt = "S", on_select = function() end })
   check(
