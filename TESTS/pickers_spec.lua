@@ -7443,6 +7443,15 @@ do
   -- real directories, since `isdirectory()` still runs for real against them.
   local win_drive = (vim.uv.cwd() or vim.fn.getcwd()):match("^(%a:)") or "C:"
 
+  -- A third platform: on WSL the module reads `/mnt/<letter>` and starts no process at all. This
+  -- block is about the two that shell out, so off Windows it pins "not WSL" (the suite ran red on a
+  -- WSL host for years: four checks below expected `df` there). WSL has its own block after this one.
+  local WSL_MODULE = "lib.nvim.cross.platform.is_wsl"
+  local orig_is_wsl = package.loaded[WSL_MODULE]
+  if not is_win then package.loaded[WSL_MODULE] = function()
+    return false
+  end end
+
   local orig_system = vim.system
   local seen_cmd
   local next_stdout = ""
@@ -7521,6 +7530,44 @@ do
   )
 
   drives.clear()
+
+  -- WSL: the mount points are the `/mnt/<letter>` folders that exist, read without a process. Run on
+  -- every host: the platform and the two folders are pinned here.
+  if not is_win then
+    package.loaded[WSL_MODULE] = function()
+      return true
+    end
+    local orig_isdirectory = vim.fn.isdirectory
+    local asked = {}
+    vim.fn.isdirectory = function(path)
+      asked[#asked + 1] = path
+      return (path == "/mnt/c" or path == "/mnt/e") and 1 or 0
+    end
+    seen_cmd = nil
+    local wsl_ok, wsl_got = pcall(function()
+      local answer
+      drives.roots(function(r)
+        answer = r
+      end)
+      return answer
+    end)
+    vim.fn.isdirectory = orig_isdirectory
+    check(
+      "drives.roots (WSL): answers at once, no process",
+      wsl_ok and wsl_got ~= nil,
+      tostring(wsl_got)
+    )
+    check("drives.roots (WSL): does not shell out", seen_cmd == nil, vim.inspect(seen_cmd))
+    check(
+      "drives.roots (WSL): the /mnt/<letter> folders that exist, in order",
+      wsl_ok and vim.deep_equal(wsl_got, { "/mnt/c", "/mnt/e" }),
+      vim.inspect(wsl_got)
+    )
+    check("drives.roots (WSL): every letter is asked for", #asked == 26, "#=" .. #asked)
+    drives.clear()
+  end
+
+  package.loaded[WSL_MODULE] = orig_is_wsl
   vim.system = orig_system
   package.loaded["pickers.sources.drives"] = nil
 end

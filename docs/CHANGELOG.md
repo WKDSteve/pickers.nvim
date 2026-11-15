@@ -10,6 +10,16 @@ a changelog.
 
 ---
 
+[x] **The `drives.roots` checks of `pickers_spec.lua` pass on WSL.** Four checks were red there for as long as
+  the suite ran on a WSL host (`shells out to the platform's own tool`, `picks powershell on Windows, df
+  elsewhere`, `a duplicate line collapses to one entry`, `drives.clear: forces the next call to shell out
+  again`). The cause was the spec, not `pickers.sources.drives`: on WSL the module reads the `/mnt/<letter>`
+  folders and starts no process, by design, and the spec knew two platforms only (Windows: PowerShell, anything
+  else: `df`). The block about the two that shell out now pins "not WSL" off Windows, and WSL has a block of
+  its own that runs on every host (the platform and two folders are pinned): no process, the folders that
+  exist, in order. While the suite was known-red on WSL, a new red check in the same file hid behind it in
+  `ci commit --wsl`. Tests 1298 -> 1302.
+
 [x] **`pickers.items`: a list of your own rows, with keys, marks and a generated preview, on every engine.**
   `pick_item` picks one entry and is done. `require("pickers.items").open({ items, title, preview, marks,
   actions, on_select })` is the list that is worked in: `actions` are keys of the call (`<M-s>`, chords only)
