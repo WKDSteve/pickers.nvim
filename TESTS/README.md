@@ -18,6 +18,33 @@ directly with `nvim -l TESTS/pickers_spec.lua` (it bootstraps its own
 `runtimepath`); it exits non-zero on a failing check. Configuration:
 `.testing.lua`.
 
+## Test sheets
+
+`TESTS/sheets/*.sheet.lua` are feature sheets of testing.nvim
+([SHEETS.md](https://github.com/WKDSteve/testing.nvim/blob/main/docs/SHEETS.md)):
+what a person would check by hand, written down as data and run in a child
+editor with a UI attached. `TESTS/sheets_spec.lua` runs each as one case
+(`sheet:<id>`); `TESTS/sheets/features.lua` is the catalog of functionalities
+they name.
+
+| Sheet | Checks |
+| --- | --- |
+| `pickers.items-telescope` | `pickers.items` on the real telescope: the list shows, `al` narrows it, `<Tab>` marks two rows, `<M-s>` gets both and the list comes back with `al` typed, `<CR>` hands both over |
+| `pickers.items-fzf-lua` | the same on the real fzf-lua, with fzf running in the child's terminal (the hand test `items-fzf-lua-marks-hand-test`) |
+| `pickers.items-snacks` | the same on the real snacks picker |
+
+The libraries (`telescope.nvim` with `plenary.nvim`, `fzf-lua`, `snacks.nvim`)
+are looked up in `$<NAME>_DIR` (`$FZF_LUA_DIR`, ...), `.deps/<name>`,
+`../<name>` and the lazy.nvim directory of the real editor; they stay off the
+runtimepath of the specs. Without one a sheet is a reported skip (`n/a`), which
+is red on CI, where the workflow checks them out at pinned commits and installs
+`fzf`.
+
+```sh
+bash scripts/test.sh --file sheets                               # all sheets
+testing sheets step pickers.items-fzf-lua --run --format=text   # one sheet, step by step
+```
+
 ## Coverage
 
 `items_spec.lua` covers `pickers.items` (the list of a caller's own rows): the
@@ -25,7 +52,8 @@ neutral part on a fake engine (the check of a call, which rows an action gets,
 the restart that keeps the query, the columns), and what each adapter does with
 `query`, `multi`, `keys` and `preview` against a stand-in of its library. The
 marked rows of a real fzf-lua cannot be driven headless (its list stays empty
-without a UI), so that path is pinned on the stand-in only.
+without a UI), so in this spec that path is pinned on the stand-in; the test
+sheet `pickers.items-fzf-lua` drives the real one with a UI attached.
 
 `browse_tree_order_spec.lua` has a file of its own too: it lists
 real folders through the directory browser and through the own tree of

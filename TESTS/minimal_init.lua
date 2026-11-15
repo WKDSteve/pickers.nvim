@@ -14,10 +14,38 @@
 local this = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p")
 local root = vim.fs.dirname(vim.fs.dirname(vim.fs.normalize(this)))
 
-local DEPS = { "testing.nvim", "lib.nvim" }
+local DEPS =
+  { "testing.nvim", "lib.nvim", "plenary.nvim", "telescope.nvim", "fzf-lua", "snacks.nvim" }
+
+-- The picker libraries are named above so the runner hands them to the child editors as $<NAME>_DIR (`ci commit`
+-- runs in a worktree). They are neither required nor put on the runtimepath of the specs, which stand up their own
+-- doubles: only the test sheets open the real pickers (TESTS/sheets/), and a sheet adds them in its own child
+-- (TESTS/sheets/_helpers.lua reads `vim.g.pickers_sheets_deps`, set below); without one it is a reported skip.
+---@type table<string, true>
+local SHEETS_ONLY =
+  { ["plenary.nvim"] = true, ["telescope.nvim"] = true, ["fzf-lua"] = true, ["snacks.nvim"] = true }
+
+---The lazy.nvim directory of the developer's real editor: the `stdpath('data')` of a child editor is a sandbox,
+---so place 4 below never has a picker library. Only asked for the libraries of the sheets.
+---@return string?
+local function real_lazy()
+  if vim.env.LOCALAPPDATA and vim.env.LOCALAPPDATA ~= "" then
+    return vim.fs.normalize(vim.env.LOCALAPPDATA) .. "/nvim-data/lazy"
+  end
+  local home = vim.env.HOME
+  if home and home ~= "" then return vim.fs.normalize(home) .. "/.local/share/nvim/lazy" end
+  return nil
+end
 
 ---@type table<string, string>
-local MARKERS = { ["lib.nvim"] = "lua/lib/nvim", ["testing.nvim"] = "lua/testing" }
+local MARKERS = {
+  ["lib.nvim"] = "lua/lib/nvim",
+  ["testing.nvim"] = "lua/testing",
+  ["plenary.nvim"] = "lua/plenary",
+  ["telescope.nvim"] = "lua/telescope",
+  ["fzf-lua"] = "lua/fzf-lua",
+  ["snacks.nvim"] = "lua/snacks",
+}
 
 ---@param name string
 ---@return string
@@ -45,6 +73,9 @@ for _, name in ipairs(DEPS) do
       vim.fs.normalize(vim.fn.stdpath("data")) .. "/lazy/" .. name,
     },
   }
+  if SHEETS_ONLY[name] and real_lazy() then
+    places[#places + 1] = { "lazy.nvim of the real editor", real_lazy() .. "/" .. name }
+  end
   local hit
   if override ~= nil and override ~= "" then
     if valid(override, marker) then hit = override end
@@ -58,7 +89,7 @@ for _, name in ipairs(DEPS) do
   end
   if hit then
     found[name] = hit
-  else
+  elseif not SHEETS_ONLY[name] then
     local lines = { ("error: dependency '%s' not found. Searched, in this order:"):format(name) }
     for i, p in ipairs(places) do
       lines[#lines + 1] = ("  %d. %s (%s)"):format(i, p[1], p[2] or "unset")
@@ -78,7 +109,14 @@ end
 
 vim.opt.rtp:prepend(root)
 for _, name in ipairs(DEPS) do
-  vim.opt.rtp:append(found[name])
+  if not SHEETS_ONLY[name] then vim.opt.rtp:append(found[name]) end
+end
+do
+  local sheets = {}
+  for name in pairs(SHEETS_ONLY) do
+    sheets[name] = found[name]
+  end
+  vim.g.pickers_sheets_deps = sheets
 end
 
 return { root = root, deps = found }

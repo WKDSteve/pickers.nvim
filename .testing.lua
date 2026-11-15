@@ -30,10 +30,25 @@ return {
     deprecation = "warn",
     process_net = "off",
   },
-  -- No allowlist: nothing legitimate was observed (script files are not measured).
-  guard_allow = { fs = {}, spawn = {}, network = {} },
+  -- No allowlist for the script files: nothing legitimate was observed (they are not measured).
+  -- nvim: TESTS/sheets_spec.lua (busted style, guarded) starts a child editor per test sheet (TESTS/sheets/).
+  guard_allow = { fs = {}, spawn = { "nvim" }, network = {} },
   -- Environment variables the specs read; a child editor inherits an allowlist only (never secrets).
-  env_allow = { "LIB_NVIM_PATH", "REPOS_DIR", "PICKERS_REQUIRE_TOOLS", "FILETREE_NVIM_DIR" },
+  -- PLENARY_NVIM_DIR .. SNACKS_NVIM_DIR: where the child editor of a test sheet finds the real picker libraries
+  -- (TESTS/minimal_init.lua names them; else .deps/, ../, the lazy.nvim directory of the real editor).
+  env_allow = {
+    "LIB_NVIM_PATH",
+    "REPOS_DIR",
+    "PICKERS_REQUIRE_TOOLS",
+    "FILETREE_NVIM_DIR",
+    "PLENARY_NVIM_DIR",
+    "TELESCOPE_NVIM_DIR",
+    "FZF_LUA_DIR",
+    "SNACKS_NVIM_DIR",
+  },
+  -- A test sheet is one case that starts a child editor and a real picker (fzf is a process of its own); under load
+  -- that takes longer than the default 10 s.
+  timeouts = { case_ms = 60000, file_ms = 300000 },
   -- Findings the minimal conformance editor cannot avoid (docs/CONFORMANCE.md of testing.nvim); reviewed 2026-10-14.
   conformance = {
     -- gated: a failed check makes `scripts/test.sh conformance` exit 1

@@ -69,6 +69,53 @@ jobs:
           repository: "WKDSteve/testing.nvim"
           path: testing.nvim
           ref: ci-verified
+      # The test sheets of pickers.items (TESTS/sheets/) open the REAL picker libraries in a child editor
+      # with a UI attached: the list shows, two rows are marked, a key acts on them. Checked out beside
+      # this repository at pinned commits (the ones the sheets were written against); TESTS/minimal_init.lua
+      # finds them there and puts none on the runtimepath of the specs. Without one a feature sheet is a
+      # skip, which is red under CI.
+      - name: Checkout plenary.nvim (pinned, for the telescope sheet)
+        uses: actions/checkout@v5
+        with:
+          repository: nvim-lua/plenary.nvim
+          ref: 74b06c6c75e4eeb3108ec01852001636d85a932b
+          path: plenary.nvim
+          persist-credentials: false
+      - name: Checkout telescope.nvim (pinned)
+        uses: actions/checkout@v5
+        with:
+          repository: nvim-telescope/telescope.nvim
+          ref: 1e1bab730218eaf97fce743be3f56e51075928ac
+          path: telescope.nvim
+          persist-credentials: false
+      - name: Checkout fzf-lua (pinned)
+        uses: actions/checkout@v5
+        with:
+          repository: ibhagwan/fzf-lua
+          ref: 22f0bbd3140a8a3b34fec75e5a640513ca6d4ce3
+          path: fzf-lua
+          persist-credentials: false
+      - name: Checkout snacks.nvim (pinned)
+        uses: actions/checkout@v5
+        with:
+          repository: folke/snacks.nvim
+          ref: 882c996cf28183f4d63640de0b4c02ec886d01f2
+          path: snacks.nvim
+          persist-credentials: false
+      # fzf-lua runs the program fzf in a terminal of the child editor. Not best effort: the sheet
+      # pickers.items-fzf-lua names its feature, so a missing fzf is red.
+      - name: Install fzf
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y fzf
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            brew install fzf
+          else
+            choco install -y fzf
+          fi
+          fzf --version
       # The filegrep specs run the REAL fd and rg against a temp tree (literal
       # file names, find.* parity, regex errors): without them that block is
       # skipped. On Linux and macOS installing is reliable, so a failure here is
