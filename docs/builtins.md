@@ -108,9 +108,10 @@ Two different things that both talk about "git status":
   built from `lib.nvim.git.status_porcelain` (the same porcelain parser
   gitsuite.nvim and filetree.nvim already use — no second parser). It is
   filterable to staged/unstaged/both, with the filter switchable via three
-  rows at the top of the list (`[x] show: ...`) rather than a raw keypress —
-  `pick_item()` has no per-call custom-keymap hook on any of the three
-  engines. Picking a file row opens it; `pickers.entry_actions` (`<C-y>`/`<M-y>`/
+  rows at the top of the list (`[x] show: ...`) rather than a key of its own:
+  when it was written `pick_item()` had no per-call keys on any of the three
+  engines ([`pickers.items`](FEATURES/ITEMS.md) has them since; the rows stay,
+  they need no key to remember). Picking a file row opens it; `pickers.entry_actions` (`<C-y>`/`<M-y>`/
   `<M-l>`, `[a`/`ML`, …) apply automatically, same as any other `pick_item()`-based
   list here.
 

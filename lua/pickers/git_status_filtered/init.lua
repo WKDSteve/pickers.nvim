@@ -19,9 +19,9 @@
 --- picker exposes as an option.
 ---
 --- The filter is three rows AT THE TOP of the list (`[x] show: ...`), not a
---- raw keypress: `pick_item()` has no per-call custom-keymap hook on any of
---- the three engines (snacks' `Picker.select` in particular is deliberately
---- minimal, see its own module doc), and `pickers.browse` already estab-
+--- raw keypress: when this was written `pick_item()` had no per-call keys on
+--- any of the three engines (`pickers.items` has them since; the rows stay,
+--- they need no key to remember), and `pickers.browse` already estab-
 --- lishes "extra rows that reopen the list" as this codebase's answer to
 --- "toggle a picker's own state without leaving it" -- reused here rather
 --- than inventing a second mechanism.
