@@ -20,7 +20,15 @@ directly with `nvim -l TESTS/pickers_spec.lua` (it bootstraps its own
 
 ## Coverage
 
-Everything lives in `pickers_spec.lua`, one commented suite per area. The
+`browse_tree_order_spec.lua` is the one spec with a file of its own: it lists
+real folders through the directory browser and through the own tree of
+filetree.nvim and wants zero positions to differ (both read the rule from
+`lib.nvim.fs.listing`). filetree.nvim is not a dependency: it is looked up in
+`$FILETREE_NVIM_DIR`, as a sibling checkout and under `$REPOS_DIR`, and without
+it the spec prints "n/a" and passes. It has its own file so that the modules of
+filetree.nvim are not loaded into the process of the other suites.
+
+Everything else lives in `pickers_spec.lua`, one commented suite per area. The
 suites read top to bottom as a tour of the plugin: config normalisation
 (collections, keymaps, `history`, `result_count`, `display`, and the removed
 `selected_index` shape being ignored rather than applied), command dispatch and

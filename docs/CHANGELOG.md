@@ -10,6 +10,13 @@ a changelog.
 
 ---
 
+[x] **The directory browser reads its order and its folder rule from `lib.nvim.fs.listing`.**
+  `pickers.browse` carried a copy of the rule below (its own comparator, its own `fs_stat` for links).
+  It now calls `listing.sorter()` and `listing.is_dir`, the same two functions filetree.nvim's own tree
+  calls, so the rule is written once. Nothing changes in what is listed. `TESTS/browse_tree_order_spec.lua`
+  lists real folders through the browser and through the tree and wants zero positions to differ; without
+  a filetree.nvim next to the checkout it reports "n/a". Needs a lib.nvim that has `lib.nvim.fs.listing`.
+
 [x] **The directory browser sorts like the file tree; a link to a directory is a directory.**
   `pickers.browse` sorted on the row text, whose trailing `/` put `foo-x/` and `foo.bar/` before `foo/`
   (`-` and `.` sort before `/`), and listed a link to a directory (a Windows junction) as a file, which
