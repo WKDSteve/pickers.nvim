@@ -16,6 +16,7 @@ the engine underneath. This plugin makes it one grammar instead.
 | **Quickfix** | The `:copen` window itself, with a preview float that follows the cursor and the refine filter stack over the list (`zf`/`zF`/`p`) |
 | **Tabs** | Named groups of `:Pickers` targets cycled from inside a picker with the query carried along (`tab_next`/`tab_prev`, opt-in) |
 | **Browse** | A directory browser on the engine's item picker, with new/rename/delete rows — and fzf-lua's `explorer` |
+| **Items** | `pickers.items`: a list of your own rows for other plugins, with keys that act on the marked rows, on every engine |
 | **GitHub** | Issues and pull requests on every engine: snacks natively, telescope and fzf-lua through the `gh` CLI |
 | **filetree.nvim** | `f` / `gr` on a tree node run through this plugin, and the picked file is revealed in the tree — opt-out on both ends |
 
@@ -47,6 +48,9 @@ appears once, where a reader would look for it.
   picker, the query travelling along.
 - **[BROWSE](BROWSE.md)** — one directory per list with the file operations
   as rows; the in-house explorer, and fzf-lua's only one.
+- **[ITEMS](ITEMS.md)** — `pickers.items`: a list of your own rows with keys of
+  its own, marked rows, a generated preview and a restart that keeps the query;
+  one API on all three engines.
 - **[PERSISTENCE](PERSISTENCE.md)** — history, frecency, and reopening what you
   just had.
 - **[IMAGES](IMAGES.md)** — png/jpg entries drawn as pictures in the preview

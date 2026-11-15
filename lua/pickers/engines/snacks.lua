@@ -265,7 +265,7 @@ end
 ---available" — the config's own existing default, not new behaviour from
 ---this change. `format_item` only needs to read `.text` off a table item
 ---instead of falling through to `tostring()`.
----@param opts { items: (string|Pickers.Item)[], prompt: string, on_select: fun(item: string|Pickers.Item) }
+---@param opts Pickers.PickItemOpts
 function M.pick_item(opts)
   local ok, Picker = pcall(require, "snacks.picker")
   if not ok then
@@ -276,19 +276,19 @@ function M.pick_item(opts)
   local preview = preview_fn()
   local snacks_opts = preview and { preview = preview } or nil
 
-  -- Items with `previews`: a preview that follows the current mode, and a key
-  -- that switches it (see `pickers.preview_modes`).
+  -- Items with `previews` (or a preview callback): a preview that follows the
+  -- current mode, and a key that switches it (see `pickers.preview_modes`).
   local pm = require("pickers.preview_modes")
   local modes = pm.new(opts)
   if modes then
-    local key = pm.snacks_key(modes.key)
-    local keys = {
-      [key] = {
+    local keys = {}
+    if modes.key then
+      keys[pm.snacks_key(modes.key)] = {
         "pickers_toggle_preview_mode",
         mode = { "i", "n" },
         desc = "switch the preview mode",
-      },
-    }
+      }
+    end
     snacks_opts = {
       preview = function(ctx)
         -- `select` wraps every entry: the one that was passed in is `.item`.
@@ -322,6 +322,68 @@ function M.pick_item(opts)
       -- the `select` layout hides the preview by default; a feature made of previews shows it
       layout = { preset = "select", hidden = {} },
     }
+  end
+
+  -- The extras of `pickers.items`: what was typed before, keys of the call, and
+  -- `<CR>` on several marked rows. Callers that pass none of them get exactly
+  -- the options above.
+  if opts.query or opts.multi or (opts.keys and #opts.keys > 0) then
+    snacks_opts = snacks_opts or {}
+    if opts.query and opts.query ~= "" then snacks_opts.pattern = opts.query end
+
+    ---What a key or `<CR>` acts on (`Pickers.ItemEnv`). `select` wraps every
+    ---entry and `picker:selected()` hands out copies, so an entry is found
+    ---again by the position `select` gave it (`idx`), never by identity.
+    ---@param picker table
+    ---@return Pickers.ItemEnv
+    local function env_of(picker)
+      local idxs = {}
+      for _, it in ipairs(picker:selected({ fallback = true })) do
+        if it and it.idx then idxs[#idxs + 1] = it.idx end
+      end
+      table.sort(idxs)
+      local items = {}
+      for i, idx in ipairs(idxs) do
+        items[i] = opts.items[idx]
+      end
+      local filter = picker:filter()
+      return { items = items, query = filter and filter.pattern or "" }
+    end
+
+    snacks_opts.actions = snacks_opts.actions or {}
+    local bound = {}
+    for i, key in ipairs(opts.keys or {}) do
+      local name = "pickers_item_key_" .. i
+      snacks_opts.actions[name] = function(picker)
+        local env = env_of(picker)
+        picker:close()
+        -- after the close has settled, as `select` does for its own choice
+        vim.schedule(function()
+          key.run(env)
+        end)
+      end
+      bound[pm.snacks_key(key.key)] = { name, mode = { "i", "n" }, desc = key.desc }
+    end
+    if next(bound) then
+      snacks_opts.win = snacks_opts.win or {}
+      for _, where in ipairs({ "input", "list" }) do
+        snacks_opts.win[where] = snacks_opts.win[where] or {}
+        snacks_opts.win[where].keys =
+          vim.tbl_extend("force", snacks_opts.win[where].keys or {}, bound)
+      end
+    end
+    if opts.multi then
+      -- `select`'s own confirm reports the row under the cursor only. This one
+      -- reports the marked rows; `select` then sees a close without a choice
+      -- and calls back with nil, which is ignored below.
+      snacks_opts.actions.confirm = function(picker)
+        local env = env_of(picker)
+        picker:close()
+        vim.schedule(function()
+          if env.items[1] ~= nil then opts.on_select(env.items[1], env) end
+        end)
+      end
+    end
   end
 
   Picker.select(opts.items, {

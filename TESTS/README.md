@@ -20,7 +20,14 @@ directly with `nvim -l TESTS/pickers_spec.lua` (it bootstraps its own
 
 ## Coverage
 
-`browse_tree_order_spec.lua` is the one spec with a file of its own: it lists
+`items_spec.lua` covers `pickers.items` (the list of a caller's own rows): the
+neutral part on a fake engine (the check of a call, which rows an action gets,
+the restart that keeps the query, the columns), and what each adapter does with
+`query`, `multi`, `keys` and `preview` against a stand-in of its library. The
+marked rows of a real fzf-lua cannot be driven headless (its list stays empty
+without a UI), so that path is pinned on the stand-in only.
+
+`browse_tree_order_spec.lua` has a file of its own too: it lists
 real folders through the directory browser and through the own tree of
 filetree.nvim and wants zero positions to differ (both read the rule from
 `lib.nvim.fs.listing`). filetree.nvim is not a dependency: it is looked up in

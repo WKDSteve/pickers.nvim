@@ -340,13 +340,35 @@ local function modes_previewer(state, conf)
   })
 end
 
----@param opts { items: (string|Pickers.Item)[], prompt: string, on_select: fun(item: string|Pickers.Item), preview_modes?: string[], preview_toggle_key?: string }
+---@param opts Pickers.PickItemOpts
 function M.pick_item(opts)
   local ok, _, pickers, finders, conf, actions, action_state
   ok, _, pickers, finders, conf, actions, action_state = load_telescope()
   if not ok then
     notify.error("telescope modules unavailable")
     return
+  end
+
+  ---What a key or `<CR>` acts on (`Pickers.ItemEnv`): the marked entries in the
+  ---order of the list, else the one under the cursor; and what was typed. Read
+  ---before the picker closes.
+  ---@param bufnr integer
+  ---@return Pickers.ItemEnv
+  local function env_of(bufnr)
+    local picker = action_state.get_current_picker(bufnr)
+    local marked = picker and picker:get_multi_selection() or {}
+    table.sort(marked, function(a, b)
+      return (a.index or 0) < (b.index or 0)
+    end)
+    local items = {}
+    for i, entry in ipairs(marked) do
+      items[i] = entry.value
+    end
+    if #items == 0 then
+      local sel = action_state.get_selected_entry()
+      if sel then items[1] = sel.value end
+    end
+    return { items = items, query = action_state.get_current_line() or "" }
   end
 
   local has_preview = false
@@ -362,6 +384,7 @@ function M.pick_item(opts)
   pickers
     .new({}, {
       prompt_title = opts.prompt,
+      default_text = opts.query,
       results_title = cheatsheet_hint(),
       finder = finders.new_table({
         results = opts.items,
@@ -378,11 +401,27 @@ function M.pick_item(opts)
       history = history_opts(),
       attach_mappings = require("pickers.result_count").wrap_attach_mappings(function(_, map)
         actions.select_default:replace(function(bufnr)
+          if opts.multi then
+            -- the marked entries, else the current one: the same set a key gets
+            local env = env_of(bufnr)
+            actions.close(bufnr)
+            if env.items[1] ~= nil then opts.on_select(env.items[1], env) end
+            return
+          end
           actions.close(bufnr)
           local sel = action_state.get_selected_entry()
           if sel then opts.on_select(sel.value) end
         end)
-        if modes and map then
+        if map then
+          for _, key in ipairs(opts.keys or {}) do
+            map({ "i", "n" }, key.key, function(prompt_bufnr)
+              local env = env_of(prompt_bufnr)
+              actions.close(prompt_bufnr)
+              key.run(env)
+            end, { desc = key.desc })
+          end
+        end
+        if modes and modes.key and map then
           map({ "i", "n" }, modes.key, function(prompt_bufnr)
             modes:toggle()
             local picker = action_state.get_current_picker(prompt_bufnr)

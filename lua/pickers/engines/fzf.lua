@@ -349,6 +349,64 @@ function M.smart(opts)
   })
 end
 
+---The extras of `pickers.items` on one `fzf_exec` call of `pick_item`: what was
+---typed before (`query`), several marked rows (`multi`) and keys of the call
+---(`keys`). Without any of them `exec_opts` comes back untouched.
+---
+---fzf prints the accepted lines, marked ones in the order they were marked. A
+---line is found again by its position in `lines` (which run parallel to
+---`opts.items`), so the items reach a callback in the order of the list, as on
+---the other engines. Whether one printed line was marked or only under the
+---cursor fzf does not say; it is the row the key acts on either way.
+---@internal
+---@param opts Pickers.PickItemOpts
+---@param lines string[]
+---@param exec_opts table
+---@return table exec_opts
+local function with_extras(opts, lines, exec_opts)
+  local keys = opts.keys or {}
+  if opts.query and opts.query ~= "" then exec_opts.query = opts.query end
+  if not opts.multi and #keys == 0 then return exec_opts end
+
+  local pos = {}
+  for i, line in ipairs(lines) do
+    pos[line] = pos[line] or i
+  end
+  ---@param selected string[]|nil
+  ---@param o table|nil  fzf-lua's options of the run; `last_query` is what was typed
+  ---@return Pickers.ItemEnv
+  local function env_of(selected, o)
+    local idxs = {}
+    for _, line in ipairs(selected or {}) do
+      if pos[line] then idxs[#idxs + 1] = pos[line] end
+    end
+    table.sort(idxs)
+    local items = {}
+    for i, idx in ipairs(idxs) do
+      items[i] = opts.items[idx]
+    end
+    return { items = items, query = type(o) == "table" and o.last_query or "" }
+  end
+
+  exec_opts.actions = exec_opts.actions or {}
+  if opts.multi then
+    exec_opts.fzf_opts["--no-multi"] = nil
+    exec_opts.fzf_opts["--multi"] = true
+    exec_opts.actions["default"] = function(selected, o)
+      local env = env_of(selected, o)
+      if env.items[1] ~= nil then opts.on_select(env.items[1], env) end
+    end
+  end
+  local pm = require("pickers.preview_modes")
+  for _, key in ipairs(keys) do
+    -- a plain action: fzf-lua closes fzf, then calls it
+    exec_opts.actions[pm.fzf_key(key.key)] = function(selected, o)
+      key.run(env_of(selected, o))
+    end
+  end
+  return exec_opts
+end
+
 ---Pick one item from a list (used by repos / collection sources, and by
 ---consumers like filetree.nvim's template picker). Items may be plain
 ---strings (unchanged — exact original code path, zero risk to existing
@@ -364,7 +422,7 @@ end
 ---avoids depending on `cat`/`bat` being on PATH (relevant on Windows).
 ---Selection still returns fzf's full untransformed line, so `by_line` maps it
 ---straight back to the original item for `on_select`.
----@param opts { items: (string|Pickers.Item)[], prompt: string, on_select: fun(item: string|Pickers.Item) }
+---@param opts Pickers.PickItemOpts
 function M.pick_item(opts)
   local ok, fzf = pcall(require, "fzf-lua")
   if not ok then
@@ -396,45 +454,52 @@ function M.pick_item(opts)
       lines[i] = text .. "\t" .. i
       by_line[lines[i]] = it
     end
-    fzf.fzf_exec(lines, {
-      prompt = opts.prompt,
-      -- the mode line on top of the text stays put when the preview is scrolled
-      preview_offset = "~" .. pm.FZF_HEADER_LINES,
-      fzf_opts = vim.tbl_extend("force", {
-        ["--no-multi"] = true,
-        ["--delimiter"] = "\\t",
-        ["--with-nth"] = "1",
-      }, history_fzf_opts("item") or {}, cheatsheet_header()),
-      preview = function(selected, preview_lines)
-        local line = (type(selected) == "table") and selected[1] or selected
-        local idx = line and tonumber(line:match("\t(%d+)$"))
-        -- fzf has no preview title: the first line names the modes, the current one in brackets
-        return pm.fzf_text(
-          modes:label(),
-          idx and modes:spec(opts.items[idx]),
-          tonumber(preview_lines)
-        )
+    local mode_actions = {
+      ["default"] = function(selected)
+        if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
       end,
-      winopts = {
-        on_create = function()
-          -- a resumed picker restarts fzf with this same state: start in the first mode
-          modes:reset()
-          setup_double_esc()
+    }
+    -- a preview callback (`opts.preview`) has one mode and no key
+    if modes.key then
+      mode_actions[pm.fzf_key(modes.key)] = {
+        fn = function()
+          modes:toggle()
         end,
-      },
-      actions = {
-        ["default"] = function(selected)
-          if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
+        exec_silent = true,
+        postfix = "refresh-preview",
+      }
+    end
+    fzf.fzf_exec(
+      lines,
+      with_extras(opts, lines, {
+        prompt = opts.prompt,
+        -- the mode line on top of the text stays put when the preview is scrolled
+        preview_offset = "~" .. pm.FZF_HEADER_LINES,
+        fzf_opts = vim.tbl_extend("force", {
+          ["--no-multi"] = true,
+          ["--delimiter"] = "\\t",
+          ["--with-nth"] = "1",
+        }, history_fzf_opts("item") or {}, cheatsheet_header()),
+        preview = function(selected, preview_lines)
+          local line = (type(selected) == "table") and selected[1] or selected
+          local idx = line and tonumber(line:match("\t(%d+)$"))
+          -- fzf has no preview title: the first line names the modes, the current one in brackets
+          return pm.fzf_text(
+            modes:label(),
+            idx and modes:spec(opts.items[idx]),
+            tonumber(preview_lines)
+          )
         end,
-        [pm.fzf_key(modes.key)] = {
-          fn = function()
-            modes:toggle()
+        winopts = {
+          on_create = function()
+            -- a resumed picker restarts fzf with this same state: start in the first mode
+            modes:reset()
+            setup_double_esc()
           end,
-          exec_silent = true,
-          postfix = "refresh-preview",
         },
-      },
-    })
+        actions = mode_actions,
+      })
+    )
     return
   end
 
@@ -451,21 +516,24 @@ function M.pick_item(opts)
       by_line[text] = it
     end
 
-    fzf.fzf_exec(lines, {
-      prompt = opts.prompt,
-      fzf_opts = vim.tbl_extend(
-        "force",
-        { ["--no-multi"] = true },
-        history_fzf_opts("item") or {},
-        cheatsheet_header()
-      ),
-      winopts = { on_create = setup_double_esc },
-      actions = {
-        ["default"] = function(selected)
-          if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
-        end,
-      },
-    })
+    fzf.fzf_exec(
+      lines,
+      with_extras(opts, lines, {
+        prompt = opts.prompt,
+        fzf_opts = vim.tbl_extend(
+          "force",
+          { ["--no-multi"] = true },
+          history_fzf_opts("item") or {},
+          cheatsheet_header()
+        ),
+        winopts = { on_create = setup_double_esc },
+        actions = {
+          ["default"] = function(selected)
+            if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
+          end,
+        },
+      })
+    )
     return
   end
 
@@ -478,28 +546,31 @@ function M.pick_item(opts)
     by_line[line] = it
   end
 
-  fzf.fzf_exec(lines, {
-    prompt = opts.prompt,
-    fzf_opts = vim.tbl_extend("force", {
-      ["--no-multi"] = true,
-      ["--delimiter"] = "\\t",
-      ["--with-nth"] = "1",
-    }, history_fzf_opts("item") or {}, cheatsheet_header()),
-    preview = function(selected)
-      local line = (type(selected) == "table") and selected[1] or selected
-      local file = line and line:match("\t(.+)$")
-      if not file then return "" end
-      local ok_read, read_lines = pcall(vim.fn.readfile, file)
-      if not ok_read then return "could not read " .. file end
-      return table.concat(read_lines, "\n")
-    end,
-    winopts = { on_create = setup_double_esc },
-    actions = {
-      ["default"] = function(selected)
-        if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
+  fzf.fzf_exec(
+    lines,
+    with_extras(opts, lines, {
+      prompt = opts.prompt,
+      fzf_opts = vim.tbl_extend("force", {
+        ["--no-multi"] = true,
+        ["--delimiter"] = "\\t",
+        ["--with-nth"] = "1",
+      }, history_fzf_opts("item") or {}, cheatsheet_header()),
+      preview = function(selected)
+        local line = (type(selected) == "table") and selected[1] or selected
+        local file = line and line:match("\t(.+)$")
+        if not file then return "" end
+        local ok_read, read_lines = pcall(vim.fn.readfile, file)
+        if not ok_read then return "could not read " .. file end
+        return table.concat(read_lines, "\n")
       end,
-    },
-  })
+      winopts = { on_create = setup_double_esc },
+      actions = {
+        ["default"] = function(selected)
+          if selected and selected[1] then opts.on_select(by_line[selected[1]] or selected[1]) end
+        end,
+      },
+    })
+  )
 end
 
 ---Open a directory picker (used by folder source).

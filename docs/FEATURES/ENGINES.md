@@ -15,7 +15,9 @@ the call.
 An engine adapter is a small module with a fixed surface — `available`,
 `pick_files`, `live_grep`, `smart`, `pick_item`, `pick_dir` (plus the separate
 builtin dispatch in `builtins/`) — so a fourth backend is a new file in
-`engines/`, not a change anywhere else.
+`engines/`, not a change anywhere else. `pick_item` also takes the optional
+fields a worked-in list needs (`query`, `multi`, `keys`, `preview`); they are
+what [`pickers.items`](ITEMS.md) is built on.
 
 - **Module:** [`engines/init.lua`](../../lua/pickers/engines/init.lua),
   adapters in `engines/{telescope,fzf,snacks}.lua`

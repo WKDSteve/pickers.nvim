@@ -55,4 +55,29 @@
 ---                      item stands in for a missing "normal" mode. See
 ---                      `pickers.preview_modes`.
 
+---What `pick_item` takes. The first three fields are the call every caller
+---makes. The rest is optional and what `pickers.items` builds its lists from;
+---a caller that passes none of it gets the list `pick_item` always was.
+---@class Pickers.PickItemOpts
+---@field items (string|Pickers.Item)[]
+---@field prompt string
+---@field on_select fun(item: string|Pickers.Item, env?: Pickers.ItemEnv)  With `multi`, `item` is the first of `env.items`.
+---@field preview_modes string[]?        Order of the modes of `Pickers.Item.previews`.
+---@field preview_toggle_key string?     Key that cycles them (default `<M-c>`).
+---@field preview (fun(item: string|Pickers.Item): Pickers.PreviewSpec|nil)?  A preview worked out per item (a file, or lines); takes the place of the items' own `file`/`previews`.
+---@field query string?                  What is typed in the prompt when the list opens.
+---@field multi boolean?                 `<CR>` reports every marked row (`env.items`), not only the one under the cursor. Marking itself is the engine's own (`<Tab>`).
+---@field keys Pickers.ItemKey[]?        Keys of this call. The engine closes the list, then calls `run`.
+
+---One key of a `pick_item` call.
+---@class Pickers.ItemKey
+---@field key string   Vim notation with a modifier or a special key (`<M-s>`, `<C-x>`, `<F5>`): the prompt has the focus on every engine, and fzf-lua binds nothing else.
+---@field desc string?
+---@field run fun(env: Pickers.ItemEnv)
+
+---What a key (or `<CR>` with `multi`) acts on.
+---@class Pickers.ItemEnv
+---@field items (string|Pickers.Item)[]  The marked rows in the order of the list; without marks the row under the cursor; empty when the list shows nothing.
+---@field query string                   What was typed in the prompt.
+
 return {}

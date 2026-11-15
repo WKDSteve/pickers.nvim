@@ -10,6 +10,21 @@ a changelog.
 
 ---
 
+[x] **`pickers.items`: a list of your own rows, with keys, marks and a generated preview, on every engine.**
+  `pick_item` picks one entry and is done. `require("pickers.items").open({ items, title, preview, marks,
+  actions, on_select })` is the list that is worked in: `actions` are keys of the call (`<M-s>`, chords only)
+  that get the marked rows, else the one under the cursor; `preview` is a function per row (a file or lines);
+  `items` and `title` may be functions. A key closes the list and `ctx.reopen()` opens it again with fresh rows
+  and the query kept: the documented restart, the one way that is the same on telescope, fzf-lua and snacks.
+  `columns()` aligns cells into row texts. The adapters take it as optional fields of `pick_item` (`query`,
+  `multi`, `keys`, `preview`); a call without them is unchanged. See [FEATURES/ITEMS.md](FEATURES/ITEMS.md).
+  Nothing in the plugin uses it yet: it is for the task dashboard of tasks.nvim and lists like it.
+
+[x] **fzf-lua: a preview mode key on the letter `s` was spelled as a modifier.**
+  `preview_toggle_key = "<M-s>"` reached fzf as `alt-shift`, which fzf refuses ("unsupported key"), so the
+  list did not open. The translation now reads the modifiers and the key apart (`alt-s`, `ctrl-alt-x`,
+  `shift-f5`). The default `<M-c>` was not affected.
+
 [x] **The directory browser reads its order and its folder rule from `lib.nvim.fs.listing`.**
   `pickers.browse` carried a copy of the rule below (its own comparator, its own `fs_stat` for links).
   It now calls `listing.sorter()` and `listing.is_dir`, the same two functions filetree.nvim's own tree

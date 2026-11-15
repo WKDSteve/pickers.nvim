@@ -35,7 +35,8 @@ M.FZF_DEFAULT_HEIGHT = 20
 ---@class Pickers.PreviewModes
 ---@field modes string[]
 ---@field idx integer
----@field key string
+---@field key string?  The key that switches the mode; nil for a preview callback (one mode).
+---@field callback (fun(item: string|table): Pickers.PreviewSpec|nil)?  `opts.preview` of the call.
 local State = {}
 State.__index = State
 
@@ -54,6 +55,7 @@ end
 ---Title for the preview window: all modes, the current one in brackets (`[normal] table`).
 ---@return string
 function State:label()
+  if self.callback then return "Preview" end
   local out = {}
   for i, name in ipairs(self.modes) do
     out[i] = (i == self.idx) and ("[" .. name .. "]") or name
@@ -66,6 +68,12 @@ end
 ---@param item string|table
 ---@return Pickers.PreviewSpec|nil
 function State:spec(item)
+  if self.callback then
+    -- a preview that throws must not take the picker down with it
+    local ok, spec = pcall(self.callback, item)
+    if not ok then return { lines = { "preview failed: " .. tostring(spec) } } end
+    return type(spec) == "table" and spec or nil
+  end
   if type(item) ~= "table" then return nil end
   local mode = self:current()
   local spec = item.previews and item.previews[mode]
@@ -95,9 +103,16 @@ end
 ---The state for one `pick_item` call, or nil when no item has `previews`.
 ---`opts.preview_modes` fixes the order; otherwise the modes found on the items
 ---are used, "normal" first and the rest alphabetically.
----@param opts { items: (string|table)[], preview_modes?: string[], preview_toggle_key?: string }
+---
+---`opts.preview` (a function `item -> Pickers.PreviewSpec|nil`, see
+---`pickers.items`) takes the place of the items' own `previews`: one mode whose
+---spec is asked per item, no key (`key` is nil), the title "Preview".
+---@param opts { items: (string|table)[], preview?: (fun(item: string|table): Pickers.PreviewSpec|nil), preview_modes?: string[], preview_toggle_key?: string }
 ---@return Pickers.PreviewModes|nil
 function M.new(opts)
+  if type(opts.preview) == "function" then
+    return setmetatable({ modes = { "preview" }, idx = 1, callback = opts.preview }, State)
+  end
   if not M.wanted(opts.items) then return nil end
   local modes = opts.preview_modes
   if type(modes) ~= "table" or #modes == 0 then
@@ -133,18 +148,27 @@ function M.snacks_key(key)
   return (key:gsub("^<[Mm]%-", "<a-"):gsub("^<[Cc]%-", "<c-"):lower())
 end
 
----The same key spelled for fzf's `--bind` (`alt-t`, `ctrl-t`).
+---The same key spelled for fzf's `--bind` (`alt-t`, `ctrl-t`, `shift-tab`,
+---`ctrl-alt-x`, `f5`): the modifiers in fzf's order, then the key. Case is not
+---kept, fzf has none for a chord.
 ---@param key string
 ---@return string
 function M.fzf_key(key)
-  local NAMES = { cr = "enter", s = "shift", bs = "bspace", ["s-tab"] = "shift-tab" }
-  local function name(n)
-    return NAMES[n] or n
+  local NAMES = { cr = "enter", ["return"] = "enter", bs = "bspace", del = "delete" }
+  local rest = key:lower():match("^<(.+)>$") or key:lower()
+  local has = {}
+  while true do
+    local mod, tail = rest:match("^([macs])%-(.+)$")
+    if not mod then break end
+    has[(mod == "c") and "ctrl" or (mod == "s") and "shift" or "alt"] = true
+    rest = tail
   end
-  local k = key:lower()
-  local mod, rest = k:match("^<([mac])%-(.+)>$")
-  if mod then return ((mod == "c") and "ctrl-" or "alt-") .. name(rest) end
-  return name((k:gsub("^<(.+)>$", "%1")))
+  local out = {}
+  for _, mod in ipairs({ "ctrl", "alt", "shift" }) do
+    if has[mod] then out[#out + 1] = mod end
+  end
+  out[#out + 1] = NAMES[rest] or rest
+  return table.concat(out, "-")
 end
 
 ---The text of `spec` as lines: its `lines`, or the file's content.
