@@ -7,7 +7,7 @@ return {
   id = "pickers.items-telescope",
   feature = "pickers.items",
   title = "pickers.items on telescope: the list shows, two rows are marked, a key acts on them, the query stays",
-  task = "images.nvim/own-tree-feature-sheets-images-media-pickers",
+  task = "pickers.nvim/items-fzf-lua-marks-hand-test",
   engine = "rpc",
   sizes = { { rows = 24, cols = 100 } },
   requires = {
