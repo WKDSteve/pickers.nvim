@@ -10,6 +10,16 @@ a changelog.
 
 ---
 
+[x] **The keys and commands of the bindings checklist are test sheets.** The pickers.nvim items of the nvim
+  config's `BINDINGS-RUNTIME-CHECKLIST.md` (its pickers section, `<leader>fa`, `:Pickers` with its scopes, the
+  compat commands and the commands of the nine collections) were to be tried by hand. Three sheets type them
+  now: `pickers.bindings-keys` and `pickers.bindings-commands` read what reached the picker (a recorder standing
+  in for the engine and for ui.kit, the sub-pickers answered as a person would, the configuration that of the
+  nvim config on fixture folders), `pickers.bindings-snacks` runs what hands over to the engine's own pickers
+  (`:Pickers builtin`, `:PickersResume`, `<leader>.`) on the real snacks. What stays for a person: the real
+  collection folders on the machine, the real drives and fd. `:Pickers builtin` without a name only says that
+  it needs one.
+
 [x] **The `drives.roots` checks of `pickers_spec.lua` pass on WSL.** Four checks were red there for as long as
   the suite ran on a WSL host (`shells out to the platform's own tool`, `picks powershell on Windows, df
   elsewhere`, `a duplicate line collapses to one entry`, `drives.clear: forces the next call to shell out
