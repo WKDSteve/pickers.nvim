@@ -3,7 +3,8 @@
 -- the files picker with a grep= filter), on which root, under which prompt. The interactive steps in between (a
 -- folder, a subdir of a collection, a directory and an action) are answered as a person would.
 -- The engine is a recorder (TESTS/sheets/_bindings.lua): that the real engines draw what they are handed is what
--- the pickers.items sheets check. <leader>. (the explorer) is in pickers-bindings-snacks.sheet.lua.
+-- the pickers.items sheets check. <leader>. (the explorer) is in pickers-bindings-snacks.sheet.lua; that the folders
+-- of the installed config exist is pickers-user-collections.sheet.lua.
 
 local steps = {
   {
@@ -158,7 +159,4 @@ return {
   engine = "rpc",
   sizes = { { rows = 24, cols = 100 } },
   steps = steps,
-  manual = {
-    "In the real editor: the collections' folders of the nvim config (Notes, WKDBooks, rules-vault, tasks-vault) exist on this machine, so their keys do not end in 'directory not found'",
-  },
 }

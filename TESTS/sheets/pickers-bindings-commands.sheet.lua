@@ -264,6 +264,6 @@ return {
   fakes = { "fd" },
   steps = steps,
   manual = {
-    "In the real editor: :AllDrives and :FindOnSystem list files of this machine (the sheet stops at the picker: the drives are probed, fd is a stand-in)",
+    "In the real editor: :AllDrives, :AllDrivesGrep and :Pickers drives list and grep files of every drive of this machine (the sheet stops at the picker: the drives are probed, nothing is searched; :FindOnSystem with the real fd is pickers-system-fd-snacks)",
   },
 }

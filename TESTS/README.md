@@ -35,6 +35,8 @@ they name.
 | `pickers.bindings-keys` | every key of the nvim config's pickers section (defaults, the opt-in `<leader>mp`/`CW`/`CF`/`fa`, the 21 collection keys): typed, and the picker that comes is read (which one, root, prompt, find flags), the sub-pickers in between answered; the engine is a recorder (`_bindings.lua`) |
 | `pickers.bindings-commands` | the same for the commands: `:Pickers` and its scopes, `tabs` and `browse`, the compat commands, `:RepoFiles`/`:RepoGrep`, `:FileGrep`, `:PickersRepeat`, `:PickersScopes` and the generated commands of the nine collections (`fd` is a stand-in) |
 | `pickers.bindings-snacks` | what hands over to the engine's own pickers, on the real snacks: `:Pickers builtin`, `:PickersResume` (the query comes back), `<leader>.` (the explorer) |
+| `pickers.system-fd-snacks` | `:FindOnSystem` with the real `fd` on the real snacks: the files below the folder typed that match are listed, the others not (a skip without `fd`, so on CI) |
+| `pickers.user-collections` | on the installed nvim config (`config = "user"`, a skip on CI): every collection folder and `repos_dir` exist on this machine, every collection key is mapped to its picker |
 
 The libraries (`telescope.nvim` with `plenary.nvim`, `fzf-lua`, `snacks.nvim`)
 are looked up in `$<NAME>_DIR` (`$FZF_LUA_DIR`, ...), `.deps/<name>`,
