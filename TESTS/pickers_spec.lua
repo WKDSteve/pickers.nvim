@@ -3522,6 +3522,31 @@ do
       )
     end
 
+    -- No name at all (`:Pickers builtin`): the same choice, every builtin in
+    -- alphabetical order, with a title that does not call nil a name.
+    for _, none in ipairs({ { nil }, { "" } }) do
+      select_calls, run_calls = {}, {}
+      builtins.run_interactive(none[1])
+      local all = select_calls[1]
+      check(
+        "builtins.run_interactive: no name offers every builtin, alphabetical ("
+          .. vim.inspect(none[1])
+          .. ")",
+        all ~= nil and vim.deep_equal(all.items, builtins.names()) and #run_calls == 0
+      )
+      check(
+        "builtins.run_interactive: no name is not called unknown",
+        all ~= nil and not all.title:find("Unknown", 1, true)
+      )
+      if all then
+        all.on_select("git_status")
+        check(
+          "builtins.run_interactive: a choice without a name runs it",
+          run_calls[1] == "git_status"
+        )
+      end
+    end
+
     select_calls, run_calls = {}, {}
     builtins.run_interactive("git_status")
     check(

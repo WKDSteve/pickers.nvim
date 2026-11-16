@@ -74,17 +74,19 @@ from one source, delegating actual dispatch to the unchanged
 
 ---
 
-## `:Pickers builtin <name>`
+## `:Pickers builtin [name]`
 
 Native pickers (git/LSP/help/…) that aren't a scope×action — dispatches
 straight into the resolved engine's own picker function. Tab-completes over
-the registry. See [docs/builtins.md](builtins.md) for the full name list and
+the registry. Without a name, or with one that is not registered, it opens a
+choice of the builtins (a typo's closest names first) and runs the one picked. See [docs/builtins.md](builtins.md) for the full name list and
 the per-engine parity matrix (some names have no telescope or fzf-lua
 equivalent — documented gaps, not bugs).
 
 ```
 :Pickers builtin git_branches
 :Pickers builtin lsp_definitions
+:Pickers builtin
 ```
 
 ---

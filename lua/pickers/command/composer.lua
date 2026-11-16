@@ -161,12 +161,13 @@ end
 -- pickers.builtins.run_interactive, which resolves the engine itself and offers
 -- the registry for an unknown name.
 ---@internal
----Route for `:Pickers builtin <name>` — dispatches to pickers.builtins.run_interactive.
+---Route for `:Pickers builtin [name]` — dispatches to pickers.builtins.run_interactive
+---(without a name it offers every builtin).
 ---@return table route
 local function builtin_route()
   return {
     path = { "builtin" },
-    args = { { name = "name", type = "PICKERS_BUILTIN_NAME" } },
+    args = { { name = "name", type = "PICKERS_BUILTIN_NAME", optional = true } },
     desc = "Native picker (git/lsp/search/…) — see docs/builtins.md",
     run = function(ctx)
       require("pickers.builtins").run_interactive(ctx.pos[1])

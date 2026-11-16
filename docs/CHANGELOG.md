@@ -10,6 +10,12 @@ a changelog.
 
 ---
 
+[x] **`:Pickers builtin` without a name opens the choice of the builtins.** It used to stop at "missing required
+  argument", while a name that is not registered already opened a choice of every builtin. The name is optional
+  now: without one the same choice comes up, every builtin in alphabetical order under "Run which builtin?";
+  picking one runs it, cancelling does nothing. `pickers.builtins.run_interactive(nil)` is that path; the spec
+  and the `pickers.bindings-snacks` sheet check it.
+
 [x] **The keys and commands of the bindings checklist are test sheets.** The pickers.nvim items of the nvim
   config's `BINDINGS-RUNTIME-CHECKLIST.md` (its pickers section, `<leader>fa`, `:Pickers` with its scopes, the
   compat commands and the commands of the nine collections) were to be tried by hand. Three sheets type them

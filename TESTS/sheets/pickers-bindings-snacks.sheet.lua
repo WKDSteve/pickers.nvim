@@ -1,7 +1,7 @@
 -- Feature pickers.builtins (TESTS/sheets/features.lua) on the real snacks: the bindings of pickers.nvim that hand
 -- over to the engine's own pickers (BINDINGS-RUNTIME-CHECKLIST.md: <leader>., :Pickers builtin, :PickersResume),
 -- which a recorder cannot stand in for. :Pickers builtin keymaps opens snacks' keymaps picker, a name that is no
--- builtin offers the closest ones (without a name the command only says it needs one); a files picker with
+-- builtin offers the closest ones, no name at all offers every builtin; a files picker with
 -- `README` typed is closed and :PickersResume brings it back with the query; <leader>. opens snacks' tree explorer
 -- on the cwd.
 -- Needs snacks.nvim (.deps/, beside this repository, or the lazy.nvim directory of the real editor); the workflow
@@ -50,6 +50,14 @@ return {
     },
     { lua = "_G.close_pickers(); vim.cmd.stopinsert()" },
     { wait = [[not _G.on_screen("Unknown builtin")]], timeout = 5000, note = "closed" },
+    { keys = ":Pickers builtin<CR>", note = "no name at all" },
+    {
+      wait = [[_G.on_screen("Run which builtin?") and _G.on_screen("autocmds")]],
+      timeout = 15000,
+      note = "it offers every builtin, alphabetical (autocmds is among the first)",
+    },
+    { lua = "_G.close_pickers(); vim.cmd.stopinsert()" },
+    { wait = [[not _G.on_screen("Run which builtin?")]], timeout = 5000, note = "closed" },
 
     -- :PickersResume
     { keys = ":Pickers cwd files<CR>", note = "files in the cwd" },

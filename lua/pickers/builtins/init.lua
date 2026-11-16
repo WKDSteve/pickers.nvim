@@ -586,17 +586,20 @@ function M.ranked_names(name)
   return out
 end
 
---- Entry point of `:Pickers builtin <name>`. A known name runs straight away;
---- an unknown one opens a choice of the registered builtins (closest first)
---- via lib.nvim's `ui.kit.select` (`vim.ui.select` as fallback). Picking one
---- runs it, cancelling does nothing.
----@param name string
+--- Entry point of `:Pickers builtin [name]`. A known name runs straight away;
+--- an unknown one opens a choice of the registered builtins (closest first),
+--- no name at all the same choice in alphabetical order, via lib.nvim's
+--- `ui.kit.select` (`vim.ui.select` as fallback). Picking one runs it,
+--- cancelling does nothing.
+---@param name string|nil
 ---@param opts table|nil
 ---@param engine_name string|nil
 function M.run_interactive(name, opts, engine_name)
-  if M.REGISTRY[name] then return M.run(name, opts, engine_name) end
-  local items = M.ranked_names(name)
-  local title = "Unknown builtin '" .. tostring(name) .. "' — run which?"
+  if name ~= nil and M.REGISTRY[name] then return M.run(name, opts, engine_name) end
+  local unnamed = name == nil or name == ""
+  local items = unnamed and M.names() or M.ranked_names(name)
+  local title = unnamed and "Run which builtin?"
+    or ("Unknown builtin '" .. tostring(name) .. "' — run which?")
   local function on_pick(choice)
     if type(choice) == "string" and M.REGISTRY[choice] then M.run(choice, opts, engine_name) end
   end

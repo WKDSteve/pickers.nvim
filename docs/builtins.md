@@ -14,7 +14,8 @@ whatever opts you pass, same as calling it yourself.
 
 Tab-completes over every registered name (`:Pickers builtin <Tab>`). A name
 that is not registered (a typo) opens a choice of all builtins, the closest
-names first; picking one runs it, cancelling does nothing. From Lua,
+names first; `:Pickers builtin` without a name opens the same choice in
+alphabetical order. Picking one runs it, cancelling does nothing. From Lua,
 `require("pickers.builtins").run(name)` does not ask: an unknown name is
 reported as an error. See `lua/pickers/builtins/init.lua` for the registry
 itself.
