@@ -156,19 +156,20 @@ function M.rank(query, files, greps, w, limit, frecency, dedup_grep_rows)
   end
 
   for _, f in ipairs(files) do
-    local s = M.score_file(query, f.path, w)
-    if s then
-      if grepped[f.abspath] then s = s + w.both end
-      if frecency then s = s + (frecency[f.abspath] or 0) end
-      items[#items + 1] = {
-        kind = "file",
-        path = f.path,
-        root = f.root,
-        abspath = f.abspath,
-        score = s,
-        display = f.path,
-      }
-    end
+    -- fd (or the listing) already matched every file here; a nil score only means the literal matcher cannot
+    -- read the query (a regex such as `name.*`), so the file keeps a small base instead of being dropped, as a
+    -- grep row does in score_grep.
+    local s = M.score_file(query, f.path, w) or 1
+    if grepped[f.abspath] then s = s + w.both end
+    if frecency then s = s + (frecency[f.abspath] or 0) end
+    items[#items + 1] = {
+      kind = "file",
+      path = f.path,
+      root = f.root,
+      abspath = f.abspath,
+      score = s,
+      display = f.path,
+    }
   end
 
   local grep_items = {} ---@type Pickers.Smart.Item[]

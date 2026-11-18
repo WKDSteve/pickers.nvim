@@ -5395,6 +5395,20 @@ do
   check("score.rank: dual-hit file floats to top", top.abspath == "/r/smart.lua", top.abspath)
   check("score.rank: _rank assigned", ranked[1]._rank == 1 and ranked[#ranked]._rank == #ranked)
 
+  -- a regex query: fd matched the file, the literal matcher cannot read `.*`; the file stays in the list
+  local regex_ranked = score.rank(
+    "needle.*",
+    { { path = "src/needle_file.lua", root = "/r", abspath = "/r/src/needle_file.lua" } },
+    {},
+    w,
+    100
+  )
+  check(
+    "score.rank: a file fd found for a regex query is kept",
+    #regex_ranked == 1 and regex_ranked[1].abspath == "/r/src/needle_file.lua",
+    "#=" .. #regex_ranked
+  )
+
   -- limit trims
   local trimmed = score.rank("smart", files, greps, w, 2)
   check("score.rank: limit trims", #trimmed == 2, "#=" .. #trimmed)
