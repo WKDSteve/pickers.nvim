@@ -38,6 +38,7 @@ return {
   -- (TESTS/minimal_init.lua names them; else .deps/, ../, the lazy.nvim directory of the real editor).
   env_allow = {
     "LIB_NVIM_PATH",
+    "LIB_FS_HELPER_TEST",
     "REPOS_DIR",
     "PICKERS_REQUIRE_TOOLS",
     "FILETREE_NVIM_DIR",
