@@ -10093,6 +10093,27 @@ do
         )
       end
     end
+    -- a root reached through a link: fd may print the resolved path (macOS: /var is /private/var)
+    local link = tmp .. "_link"
+    if
+      pcall(vim.uv.fs_symlink, tmp, link, { dir = true, junction = true }) and vim.uv.fs_lstat(link)
+    then
+      search.LISTING = false
+      local via_fd = paths((search.collect({ roots = { link }, query = "init", find = {} })))
+      search.LISTING = true
+      search.clear_listings()
+      local via_list = paths((search.collect({ roots = { link }, query = "init", find = {} })))
+      check(
+        "listing: a linked root gives what fd gives",
+        via_list == via_fd and via_list ~= "",
+        via_list .. " vs " .. via_fd
+      )
+      os.remove(link)
+      vim.fn.delete(link, "d")
+    else
+      print("  n/a  listing through a linked root: no symlink or junction allowed")
+    end
+
     -- a regex query still goes to fd
     search.LISTING = false
     local rx_fd = paths((search.collect({ roots = { tmp }, query = "^init\\.", find = {} })))

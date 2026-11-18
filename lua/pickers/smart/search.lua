@@ -163,11 +163,24 @@ function M.listing(root, find)
   local entry =
     { root = root, rels = {}, names = {}, lower = {}, done = false, ok = false, at = now }
   listings[key] = entry
-  local prefix = fast.norm(root)
-  local cut = #prefix + (prefix:sub(-1) == "/" and 1 or 2)
+  -- A tool may print the root as given or resolved (`fd --absolute-path` follows a link in it: on macOS
+  -- the temp folder `/var/...` is `/private/var/...`): cut whichever of the two the path starts with.
+  local prefixes = {}
+  for _, spelled in ipairs({ root, uv.fs_realpath(root) }) do
+    local p = fast.norm(spelled)
+    prefixes[#prefixes + 1] = p:sub(-1) == "/" and p or (p .. "/")
+  end
+  ---@param path string
+  ---@return string
+  local function relative(path)
+    for _, p in ipairs(prefixes) do
+      if path:sub(1, #p) == p then return path:sub(#p + 1) end
+    end
+    return path
+  end
   fast.list(root, M.list_opts(find), function(paths)
     for _, path in ipairs(paths) do
-      local rel = path:sub(cut)
+      local rel = relative(path)
       local name = rel:match("[^/]+$") or rel
       local i = #entry.rels + 1
       entry.rels[i] = rel
