@@ -121,7 +121,9 @@ jobs:
       # skipped. On Linux and macOS installing is reliable, so a failure here is
       # a real signal and PICKERS_REQUIRE_TOOLS (below, passed through by
       # .testing.lua's env_allow) turns a missing tool into a test failure.
-      # Windows is best effort: the block is skipped there if choco fails.
+      # The feature sheets of pickers.actions, pickers.scopes and pickers.keys
+      # run the real fd and rg on every system (a `requires` skip of a feature
+      # sheet is red under CI), so Windows installs them too, as it does fzf.
       - name: Install fd and ripgrep
         if: runner.os != 'Windows'
         env:
@@ -133,10 +135,12 @@ jobs:
           else
             brew install fd ripgrep
           fi
-      - name: Install fd and ripgrep (Windows, best effort)
+      - name: Install fd and ripgrep (Windows)
         if: runner.os == 'Windows'
-        continue-on-error: true
-        run: choco install -y fd ripgrep
+        run: |
+          choco install -y fd ripgrep
+          fd --version
+          rg --version
 
       - name: Run tests
         working-directory: pickers.nvim

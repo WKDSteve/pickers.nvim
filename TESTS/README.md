@@ -36,6 +36,10 @@ they name.
 | `pickers.bindings-commands` | the same for the commands: `:Pickers` and its scopes, `tabs` and `browse`, the compat commands, `:RepoFiles`/`:RepoGrep`, `:FileGrep`, `:PickersRepeat`, `:PickersScopes` and the generated commands of the nine collections (`fd` is a stand-in) |
 | `pickers.bindings-snacks` | what hands over to the engine's own pickers, on the real snacks: `:Pickers builtin`, `:PickersResume` (the query comes back), `<leader>.` (the explorer) |
 | `pickers.system-fd-snacks` | `:FindOnSystem` with the real `fd` on the real snacks: the files below the folder typed that match are listed, the others not (a skip without `fd`, so on CI) |
+| `pickers.actions-smart-snacks` | the smart action and `:FileGrep` with the real `rg` and `fd` on the real snacks: a word finds a file by its content, a regex query by its name (fd for that keystroke), `:FileGrep` by path and `grep=` content |
+| `pickers.scopes-folder-drives-snacks` | `:FindInFolder` lists the folders with the real `fd --type d`, the one picked becomes the root of a files picker; `:Pickers drives grep` probes the drives (PowerShell, `df`) and stops before a search |
+| `pickers.keys-system-snacks` | `<M-o>` and `<M-x>` on a row of the real snacks: the file goes to the default application and the file manager, both stand-ins (`fakes`), on lib.nvim's Linux dispatch on every system |
+| `pickers.builtins-git-github-telescope` | `:Pickers builtin git_status_filtered` with the real `git` and `:Pickers builtin gh_issue` with a stand-in `gh` that prints two issues, on the real telescope |
 | `pickers.user-collections` | on the installed nvim config (`config = "user"`, a skip on CI): every collection folder and `repos_dir` exist on this machine, every collection key is mapped to its picker |
 
 The libraries (`telescope.nvim` with `plenary.nvim`, `fzf-lua`, `snacks.nvim`)
@@ -43,7 +47,11 @@ are looked up in `$<NAME>_DIR` (`$FZF_LUA_DIR`, ...), `.deps/<name>`,
 `../<name>` and the lazy.nvim directory of the real editor; they stay off the
 runtimepath of the specs. Without one a sheet is a reported skip (`n/a`), which
 is red on CI, where the workflow checks them out at pinned commits and installs
-`fzf`.
+`fzf`, `fd` and `rg`.
+
+`testing perf` (testing.nvim docs/PERF.md) runs these sheets to see which
+processes pickers.nvim starts; the functionalities of the catalog that start
+none of their own carry `perf = "skip:<why>"` there.
 
 ```sh
 bash scripts/test.sh --file sheets                               # all sheets
