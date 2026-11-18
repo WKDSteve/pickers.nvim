@@ -461,7 +461,15 @@ function M.pick_dir(opts)
           items[#items + 1] = { text = d, file = d }
         end
 
-        Picker.select(items, { prompt = opts.prompt or "Folder> " }, function(item)
+        -- format_item: Snacks.picker.select() shows a table item through tostring()
+        -- without it ("table: 0x..."), as vim.ui.select() does.
+        local select_opts = {
+          prompt = opts.prompt or "Folder> ",
+          format_item = function(item)
+            return item.text
+          end,
+        }
+        Picker.select(items, select_opts, function(item)
           if item then opts.on_select(item.file) end
         end)
       end)

@@ -6086,6 +6086,13 @@ do
     first and first.file == first.text
   )
 
+  check(
+    "pick_dir/snacks: the row shows the path, not the table (format_item)",
+    first
+      and type(captured.opts.format_item) == "function"
+      and captured.opts.format_item(first) == first.text
+  )
+
   -- on_select must receive a plain path STRING, unwrapped from the table --
   -- the folder source's `opts.on_select: fun(path: string)` contract.
   captured.on_choice(first)
