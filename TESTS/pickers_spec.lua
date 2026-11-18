@@ -29,6 +29,10 @@ if vim.fn.isdirectory(lib) == 1 then vim.opt.runtimepath:append(lib) end
 
 -- ── Tiny assertion harness ──────────────────────────────────────────────────
 local passed, failed = 0, 0
+-- The cases below stub `vim.system` to play fd per keystroke; the shared listing has its own block
+-- near the end, which turns it back on.
+vim.g.pickers_smart_listing = false
+
 local function check(name, cond, detail)
   if cond then
     passed = passed + 1
@@ -10017,6 +10021,109 @@ do
 
   vim.notify = real_notify
   config.apply({ engine = "auto", find = { hidden = true } })
+end
+
+-- ── pickers.smart.search — one listing per root, filtered per keystroke ─────
+do
+  package.loaded["pickers.smart.search"] = nil
+  vim.g.pickers_smart_listing = nil
+  local search = require("pickers.smart.search")
+  check("listing: on by default", search.LISTING == true)
+  local fd_exe = search.find_tool({ "fd", "fdfind" })
+  local helper = require("lib.nvim.fs.helper")
+  helper.configure(false)
+
+  -- the pattern: what fd matches, or nil when only a regex can answer
+  check("fd_pattern: plain text, smart-case off", search.fd_pattern("init.l") == "init.l")
+  local up, up_ci = search.fd_pattern("Init")
+  check("fd_pattern: an upper-case letter is case-sensitive", up == "Init" and up_ci == false)
+  check("fd_pattern: '-' and '%' are escaped", search.fd_pattern("a-b%") == "a%-b%%")
+  for _, q in ipairs({ "a*", "[ab]", "x|y", "^a", "a$", "a/b", "a+", "(a)", "a?", "a{2}", "a\\d" }) do
+    check("fd_pattern: '" .. q .. "' needs fd", search.fd_pattern(q) == nil)
+  end
+
+  local tmp = vim.fs.normalize(vim.fn.tempname()) .. "_pick"
+  for _, rel in ipairs({
+    "init.lua",
+    "lua/mod/init.lua",
+    "lua/mod/Init.md",
+    "docs/a-b.txt",
+    "docs/initial.txt",
+    ".hidden/init.lua",
+    "skip/init.lua",
+    "deep/x/y/z/init-x.lua",
+  }) do
+    local path = tmp .. "/" .. rel
+    vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
+    vim.fn.writefile({ "x" }, path, "b")
+  end
+  local function paths(list)
+    local out = {}
+    for _, f in ipairs(list) do
+      out[#out + 1] = f.path
+    end
+    table.sort(out)
+    return table.concat(out, ",")
+  end
+
+  if not fd_exe then
+    print("  n/a  listing vs fd: fd not installed")
+  else
+    -- rg off: the files half alone
+    local find_tool = search.find_tool
+    search.find_tool = function(names)
+      if names == "rg" then return nil end
+      return find_tool(names)
+    end
+    for _, find in ipairs({
+      {},
+      { hidden = true },
+      { hidden = true, exclude = { "skip" } },
+      { no_ignore = true, exclude = { "*.txt" } },
+    }) do
+      for _, q in ipairs({ "", "init", "Init", "init.l", "a-b", "nothing", "init-x" }) do
+        search.LISTING = false
+        local by_fd = paths((search.collect({ roots = { tmp }, query = q, find = find })))
+        search.LISTING = true
+        local by_list, _, probs = search.collect({ roots = { tmp }, query = q, find = find })
+        check(
+          ("listing: %q %s gives what fd gives"):format(q, vim.inspect(find, { newline = "" })),
+          paths(by_list) == by_fd and #probs == 0,
+          paths(by_list) .. " vs " .. by_fd
+        )
+      end
+    end
+    -- a regex query still goes to fd
+    search.LISTING = false
+    local rx_fd = paths((search.collect({ roots = { tmp }, query = "^init\\.", find = {} })))
+    search.LISTING = true
+    local rx = paths((search.collect({ roots = { tmp }, query = "^init\\.", find = {} })))
+    check(
+      "listing: a regex query is answered by fd",
+      rx == rx_fd and rx ~= "",
+      rx .. " vs " .. rx_fd
+    )
+    search.find_tool = find_tool
+
+    -- one listing serves every keystroke: a file made later is not seen until the list is old
+    search.clear_listings()
+    search.prefetch({ tmp }, {})
+    search.collect({ roots = { tmp }, query = "", find = {} })
+    vim.fn.writefile({ "x" }, tmp .. "/later_init.lua", "b")
+    local again = search.collect({ roots = { tmp }, query = "later", find = {} })
+    check("listing: reused while fresh", #again == 0)
+    local ttl = search.LIST_TTL_MS
+    search.LIST_TTL_MS = 0
+    local fresh = search.collect({ roots = { tmp }, query = "later", find = {} })
+    check("listing: listed again once old", #fresh == 1)
+    search.LIST_TTL_MS = ttl
+  end
+
+  helper.configure(nil)
+  search.clear_listings()
+  vim.fn.delete(tmp, "rf")
+  vim.g.pickers_smart_listing = false
+  package.loaded["pickers.smart.search"] = nil
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────

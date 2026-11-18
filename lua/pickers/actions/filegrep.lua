@@ -19,7 +19,7 @@ function M.run(source, engine_mod, override)
     return
   end
   if source.find_command then
-    notify.warn("filegrep ignores the scope's custom find command and lists files with fd")
+    notify.warn("filegrep ignores the scope's custom find command and lists files itself")
   end
 
   -- Same find-flag resolution as pickers.actions.files / .smart.
@@ -30,6 +30,9 @@ function M.run(source, engine_mod, override)
   -- Keep the scope label ("CWD> " -> "CWD grep=> ") and the tab-group suffix.
   local label = (source.prompt or ""):gsub("%s*>?%s*$", "")
   local prompt = (label ~= "" and (label .. " ") or "") .. "grep=> "
+
+  -- the files of every root are listed once, now, while the picker opens (pickers.smart.search)
+  require("pickers.smart.search").prefetch(source.roots, find)
 
   engine_mod.smart({
     core = "filegrep",

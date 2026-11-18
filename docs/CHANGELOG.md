@@ -10,6 +10,14 @@ a changelog.
 
 ---
 
+[x] **smart and filegrep list each root once instead of running fd per keystroke.** Every keystroke of
+  the smart picker started `fd` and waited for it (90-145 ms, also for zero hits, through the scoop shim).
+  Now the picker lists every root once when it opens (`lib.nvim.fs.fast`: the file helper, `fd`, `rg`,
+  Lua) and filters that list in Lua the way `fd` applies its pattern; a regex query still runs `fd`.
+  Later keystrokes cost 0-3 ms, the first 33-53 ms with the helper. The spec compares the listing with
+  `fd` per keystroke for several queries and `find` options. `vim.g.pickers_smart_listing = false` is
+  the way back.
+
 [x] **`:Pickers builtin` without a name opens the choice of the builtins.** It used to stop at "missing required
   argument", while a name that is not registered already opened a choice of every builtin. The name is optional
   now: without one the same choice comes up, every builtin in alphabetical order under "Run which builtin?";

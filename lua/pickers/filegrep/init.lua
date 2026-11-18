@@ -309,7 +309,7 @@ local function run(cmd, root, timeout, tool, benign_code)
   return lines, problem, spawn_failed, abort
 end
 
----All files below `root` (fd), memoised.
+---All files below `root` (the shared listing, or fd with `search.LISTING = false`), memoised.
 ---@internal
 ---@param root string
 ---@param find Pickers.FindOpts|nil
@@ -317,6 +317,31 @@ end
 ---@param fd string|nil  fd executable name, nil when not installed
 ---@return Pickers.FileGrep.Entry
 local function list_files(root, find, timeout, fd)
+  if search.LISTING then
+    -- the shared listing of pickers.smart.search (lib.nvim.fs.fast: helper, fd, rg, Lua)
+    local key = table.concat({ "list", root, vim.inspect(find or {}) }, "\0")
+    return cached(key, function()
+      local entry = search.listing(root, find or {})
+      if not entry.done then
+        vim.wait(timeout, function()
+          return entry.done
+        end, 2)
+      end
+      local paths = vim.list_slice(entry.rels)
+      table.sort(paths)
+      local problem
+      if not entry.done then
+        problem = "listing "
+          .. root
+          .. " took longer than "
+          .. timeout
+          .. " ms -- results may be truncated"
+      elseif not entry.ok then
+        problem = "listing " .. root .. " failed -- results may be truncated"
+      end
+      return { paths = paths, problems = problem and { problem } or {}, failed = not entry.done }
+    end)
+  end
   if not fd then return { paths = {}, problems = { "fd not found on PATH" } } end
   local key = table.concat({ "fd", root, vim.inspect(find or {}) }, "\0")
   return cached(key, function()

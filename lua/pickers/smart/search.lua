@@ -18,6 +18,12 @@
 ---     `find.exclude` is honoured too (the other find.* flags don't apply,
 ---     same as live_grep). See `M.rg_args`.
 ---
+--- The files half lists every root ONCE (`lib.nvim.fs.fast`: the file helper, `fd`, `rg`, Lua; the
+--- picker starts it with `prefetch` when it opens) and filters that list in Lua on each keystroke,
+--- the way `fd` applies its pattern: to the file name, smart-case, `.` any character. A query that
+--- only a regex engine can answer (`[`, `*`, `|`, `/` ...) still runs `fd` for that keystroke. A list
+--- is reused for LIST_TTL_MS, so a picker opened again soon starts at once.
+---
 --- `fd_args`/`rg_args` are exported (rather than kept local) purely so they
 --- are unit-testable as pure functions -- both run through `vim.system`
 --- with an argv list (no shell), so exclude globs are passed raw/unescaped
@@ -93,6 +99,150 @@ end
 ---Forget the notification throttle (tests, and a manual refresh).
 function M.reset_report()
   last_msg, last_at = nil, 0
+end
+
+-- ── one listing per root, filtered per keystroke ───────────────────────────
+
+---How long a listing of a root is reused (ms).
+M.LIST_TTL_MS = 15000
+
+---False: every keystroke runs fd as before. `vim.g.pickers_smart_listing = false` before the first
+---search turns it off (a fallback; the specs that stub fd per keystroke use it).
+M.LISTING = vim.g.pickers_smart_listing ~= false
+
+---@class Pickers.Smart.Listing
+---@field root string       the root as the caller spelled it (normalized)
+---@field rels string[]     paths relative to the root, `/`-separated
+---@field names string[]    the file names (same index), for the pattern
+---@field lower string[]    the file names lower-cased (smart-case)
+---@field done boolean
+---@field ok boolean
+---@field at number         hrtime (ms) the listing started
+
+---@type table<string, Pickers.Smart.Listing>
+local listings = {}
+
+---@param root string
+---@param find Pickers.FindOpts
+---@return string
+local function listing_key(root, find)
+  local exclude = vim.deepcopy(find.exclude or {})
+  table.sort(exclude)
+  return table.concat({
+    root,
+    tostring(find.hidden == true),
+    tostring(find.no_ignore == true),
+    tostring(find.follow == true),
+    table.concat(exclude, "\1"),
+  }, "\0")
+end
+
+---What `fd_args` gives fd, as `lib.nvim.fs.fast.list` options.
+---@param find Pickers.FindOpts
+---@return table
+function M.list_opts(find)
+  return {
+    hidden = find.hidden == true,
+    ignore = find.no_ignore and "none" or "gitignore",
+    follow = find.follow == true,
+    exclude = find.exclude or {},
+  }
+end
+
+---The listing of `root` for `find`: a fresh one is started when there is none or it is older than
+---LIST_TTL_MS; it fills in while the caller goes on.
+---@param root string  normalized
+---@param find Pickers.FindOpts
+---@return Pickers.Smart.Listing
+function M.listing(root, find)
+  local key = listing_key(root, find)
+  local now = uv.hrtime() / 1e6
+  local hit = listings[key]
+  if hit and (not hit.done or now - hit.at < M.LIST_TTL_MS) then return hit end
+  local fast = require("lib.nvim.fs.fast")
+  local entry =
+    { root = root, rels = {}, names = {}, lower = {}, done = false, ok = false, at = now }
+  listings[key] = entry
+  local prefix = fast.norm(root)
+  local cut = #prefix + (prefix:sub(-1) == "/" and 1 or 2)
+  fast.list(root, M.list_opts(find), function(paths)
+    for _, path in ipairs(paths) do
+      local rel = path:sub(cut)
+      local name = rel:match("[^/]+$") or rel
+      local i = #entry.rels + 1
+      entry.rels[i] = rel
+      entry.names[i] = name
+      entry.lower[i] = name:lower()
+    end
+  end, function(ok)
+    entry.done, entry.ok = true, ok
+  end)
+  return entry
+end
+
+---Start listing every root, so the first keystroke finds the list (ready or on its way).
+---@param roots string[]|nil
+---@param find Pickers.FindOpts|nil
+function M.prefetch(roots, find)
+  if not M.LISTING then return end
+  for _, root in ipairs(roots or { uv.cwd() or "." }) do
+    pcall(M.listing, vim.fs.normalize(root), find or {})
+  end
+end
+
+---Forget every listing (tests, and a manual refresh).
+function M.clear_listings()
+  listings = {}
+end
+
+---The Lua pattern for an fd query, or nil when only a regex engine can answer it. fd matches its
+---pattern against the file name, unanchored; `.` is any character in both; smart-case: an upper-case
+---letter makes it case-sensitive.
+---@param query string
+---@return string|nil pattern
+---@return boolean ignore_case
+function M.fd_pattern(query)
+  if query:find("[%[%]%(%)%*%+%?{}|%^%$\\/]") then return nil, false end
+  local ignore_case = not query:find("%u")
+  local pattern = query:gsub("[%-%%]", "%%%0")
+  if ignore_case then pattern = pattern:lower() end
+  return pattern, ignore_case
+end
+
+---The files of a listing whose name matches `query` as fd would match it, waiting up to `timeout` ms
+---for a listing still on its way. Nil when `query` needs fd itself.
+---@param root string  normalized
+---@param find Pickers.FindOpts
+---@param query string
+---@param timeout integer
+---@return Pickers.Smart.File[]|nil files
+---@return string|nil problem
+function M.listed(root, find, query, timeout)
+  local pattern, ignore_case = M.fd_pattern(query)
+  if not pattern then return nil end
+  local entry = M.listing(root, find)
+  if not entry.done then vim.wait(timeout, function()
+    return entry.done
+  end, 2) end
+  local problem
+  if not entry.done then
+    problem = "listing "
+      .. root
+      .. " took longer than "
+      .. timeout
+      .. " ms -- results may be truncated"
+  elseif not entry.ok then
+    problem = "listing " .. root .. " failed -- results may be truncated"
+  end
+  local names = ignore_case and entry.lower or entry.names
+  local files = {} ---@type Pickers.Smart.File[]
+  for i, name in ipairs(names) do
+    if pattern == "" or name:find(pattern) then
+      local rel = entry.rels[i]
+      files[#files + 1] = { path = rel, root = root, abspath = M.join_root(root, rel) }
+    end
+  end
+  return files, problem
 end
 
 ---Characters cmd.exe interprets inside an argument.
@@ -277,13 +427,19 @@ function M.collect(opts)
   for _, root in ipairs(roots) do
     root = vim.fs.normalize(root)
 
-    -- ── files (fd) ──────────────────────────────────────────────────────────
-    local fd_refusal = fd and M.shim_refusal(fd, query)
+    -- ── files: one listing, filtered here; fd only for a regex query ─────────
+    local listed, list_problem
+    if M.LISTING then
+      listed, list_problem = M.listed(root, find, query, timeout)
+      if list_problem then problems[#problems + 1] = list_problem end
+      if listed then vim.list_extend(files, listed) end
+    end
+    local fd_refusal = not listed and fd and M.shim_refusal(fd, query)
     if fd_refusal then
       problems[#problems + 1] = fd_refusal
       fd = nil -- not for the remaining roots either: same prompt, same shim
     end
-    if fd then
+    if fd and not listed then
       local cmd = { fd }
       vim.list_extend(cmd, M.fd_args(find, query))
       local ok, res = pcall(function()

@@ -23,6 +23,9 @@ function M.run(source, engine_mod)
   local find = require("pickers.config").get().find
   if type(source.find) == "table" then find = vim.tbl_deep_extend("force", find, source.find) end
 
+  -- the files of every root are listed once, now, while the picker opens (pickers.smart.search)
+  require("pickers.smart.search").prefetch(source.roots, find)
+
   engine_mod.smart({
     roots = source.roots,
     prompt = source.prompt,

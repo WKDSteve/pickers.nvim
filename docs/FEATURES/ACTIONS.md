@@ -40,6 +40,17 @@ live-finder shape for it (snacks a sync live finder with `sort_empty = false`,
 telescope `new_dynamic` plus an empty sorter, fzf-lua the Lua-function live
 mode that needs `fzf ≥ 0.45`).
 
+The filenames come from **one listing per root**, not from an `fd` per
+keystroke: when the picker opens, `lib.nvim.fs.fast` lists every root (the file
+helper of filetree.nvim when it is installed, else `fd`, `rg` or a Lua walk),
+and each keystroke filters that list the way `fd` applies its pattern (file
+name, smart-case, `.` any character). A query only a regex can answer (`[`, `*`,
+`|`, `/` ...) still runs `fd` for that keystroke. Measured on lib.nvim (1 451
+files) and the tasks vault (7 352): 90-145 ms per keystroke before, now the
+first one 33-53 ms with the helper (144-153 ms with `fd`) and every later one
+0-3 ms. A listing is reused for 15 s; `vim.g.pickers_smart_listing = false`
+before the first search turns it off. `filegrep` lists its files the same way.
+
 - **Module:** [`smart/`](../../lua/pickers/smart/) — `query`, `search`, `score`
 - **Usercmds:** `:Pickers <scope> smart`, `:{PascalName}Smart` per collection
 - **Config:** `smart = { weights, limit, timeout }`; `weights.both` is the

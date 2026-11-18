@@ -309,8 +309,10 @@ Tuning guide:
   own merits. Set it to `0` to disable that boost.
 - **`limit`** caps the merged list after ranking; lower it on huge trees if the
   picker feels heavy.
-- **`timeout`** bounds each per-keystroke `rg`/`fd` call. The engines debounce
-  input, and the call is synchronous, so keep this modest.
+- **`timeout`** bounds each per-keystroke `rg` call, and how long a keystroke
+  waits for the file listing of a root to arrive (it is listed once per picker,
+  see `FEATURES/ACTIONS.md`). The engines debounce input, and the call is
+  synchronous, so keep this modest.
 
 Requirements: `fd` (or `fdfind`) and `rg` on `PATH`. The files half honours
 `find` (hidden/no_ignore/follow/exclude); the grep half always searches
