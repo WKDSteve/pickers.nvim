@@ -6101,6 +6101,25 @@ do
     type(got_path) == "string" and got_path == first.file
   )
 
+  -- fd prints absolute paths for an absolute search path (pick_dir passes the cwd): they are taken as they are,
+  -- not joined onto the cwd a second time
+  local abs_cwd = vim.fs.normalize(vim.fn.getcwd())
+  captured = nil
+  vim.system = function(_cmd, _opts, cb)
+    vim.schedule(function()
+      cb({ code = 0, stdout = abs_cwd .. "/sub_a/\n" })
+    end)
+  end
+  snacks_engine.pick_dir({ cwd = abs_cwd, prompt = "Folder> ", on_select = function() end })
+  vim.wait(2000, function()
+    return captured ~= nil
+  end)
+  check(
+    "pick_dir/snacks: an absolute line from fd is not joined onto the cwd again",
+    captured and captured.items[1] and captured.items[1].file == abs_cwd .. "/sub_a",
+    captured and captured.items[1] and captured.items[1].file
+  )
+
   vim.system = orig_system
   vim.fn.executable = orig_executable
   package.loaded["pickers.engines.snacks"] = nil

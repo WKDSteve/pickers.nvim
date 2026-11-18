@@ -435,7 +435,10 @@ function M.pick_dir(opts)
 
         local dirs = {}
         for line in (res.stdout or ""):gmatch("[^\r\n]+") do
-          dirs[#dirs + 1] = vim.fs.normalize(cwd .. "/" .. line)
+          -- fd prints absolute paths when its search path is absolute (it is: `cwd`),
+          -- relative ones otherwise: only a relative line is joined onto `cwd`.
+          local dir = vim.fn.isabsolutepath(line) == 1 and line or (cwd .. "/" .. line)
+          dirs[#dirs + 1] = vim.fs.normalize(dir)
         end
 
         if #dirs == 0 then
