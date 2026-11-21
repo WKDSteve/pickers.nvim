@@ -194,6 +194,7 @@ jobs:
         env:
           TESTING_CACHE_HOME: ${{ runner.temp }}/testing-cache
           PICKERS_REQUIRE_TOOLS: "1"
+          TMPDIR: "/tmp"
           CI_STEPS: ${{ matrix.steps }}
           CI_REPORT: ${{ runner.temp }}/ci-report.json
           CI_IR: ${{ runner.temp }}/suite-ir.json

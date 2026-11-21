@@ -97,8 +97,14 @@ return {
         },
         { name = "ripgrep", why = "the filegrep specs and the feature sheets run the real rg" },
       },
-      -- every leg installs fd and rg (packages above), so a missing one is a failure, not a skip
-      env = { PICKERS_REQUIRE_TOOLS = "1" },
+      env = {
+        -- every leg installs fd and rg (packages above), so a missing one is a failure, not a skip
+        PICKERS_REQUIRE_TOOLS = "1",
+        -- macOS: the child sandbox lives below dirname(tempname()) of the runner, and from /var/folders/.../T the
+        -- RPC socket fzf-lua connects to in a sheet's child is longer than the 104 bytes of a Unix socket path
+        -- (pipe_connect fails with ENOTSOCK, a hit-enter prompt). Linux uses /tmp anyway; Windows reads TMP/TEMP.
+        TMPDIR = "/tmp",
+      },
       publish = { why = "data.nvim and replacer.nvim check out pickers.nvim at ci-verified" },
     },
     steps = {
