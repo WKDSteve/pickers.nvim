@@ -15,7 +15,9 @@ local SETUP = [[dofile(vim.fn.getcwd() .. "/TESTS/sheets/_helpers.lua")
   end
   ---fzf has ended and its window is gone (an empty list alone is not enough: the window closes after it).
   _G.picker_closed = function()
-    return vim.bo.filetype ~= "fzf" and vim.fn.mode() ~= "t"
+    if vim.bo.filetype ~= "fzf" and vim.fn.mode() ~= "t" then return true end
+    _G.close_state = ("filetype %s, mode %s"):format(vim.bo.filetype, vim.fn.mode())
+    return false
   end]]
 
 return {
@@ -48,7 +50,7 @@ return {
       timeout = 20000,
       note = "rg finds the file that holds it, and no other",
     },
-    { input = "<C-c>", note = "fzf aborts" },
+    { input = "<Esc><Esc>", note = "<Esc> leaves the terminal, the second one closes the picker" },
     { wait = "_G.picker_closed()", timeout = 10000, note = "closed" },
     { input = ":Pickers cwd smart<CR>", note = "smart again" },
     { wait = "_G.picker_open()", timeout = 15000, note = "open" },
@@ -58,7 +60,7 @@ return {
       timeout = 20000,
       note = "fd finds the file by its name",
     },
-    { input = "<C-c>", note = "fzf aborts" },
+    { input = "<Esc><Esc>", note = "<Esc> leaves the terminal, the second one closes the picker" },
     { wait = "_G.picker_closed()", timeout = 10000, note = "closed" },
 
     { input = ":FileGrep<CR>", note = ":FileGrep" },
@@ -69,7 +71,7 @@ return {
       timeout = 20000,
       note = "rg finds the file whose path holds the word and whose content the other, and no other file",
     },
-    { input = "<C-c>", note = "fzf aborts" },
+    { input = "<Esc><Esc>", note = "<Esc> leaves the terminal, the second one closes the picker" },
   },
   manual = {
     "In the real editor on a large repository: typing in the smart picker stays fluent while rg runs",
