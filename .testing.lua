@@ -50,6 +50,61 @@ return {
   -- A test sheet is one case that starts a child editor and a real picker (fzf is a process of its own); under load
   -- that takes longer than the default 10 s.
   timeouts = { case_ms = 60000, file_ms = 300000 },
+  ci = {
+    -- The GitHub workflow, generated: `testing init --workflow=public --force` writes .github/workflows/ci.yml from
+    -- this (testing.nvim docs/WORKFLOW-CI.md); the step workflow-in-sync keeps the two together.
+    workflow = {
+      name = "pickers.nvim",
+      layout = "hosted",
+      -- the steps that depend on the platform: the windows and macOS legs run only these
+      platform = { "suite", "conformance" },
+      -- `testing ci land`: a check branch ci/** runs the hosted legs, main moves to a commit only once it is green there
+      land = true,
+      -- The test sheets of pickers.items (TESTS/sheets/) open the REAL picker libraries in a child editor; below
+      -- .deps/ TESTS/minimal_init.lua finds them and puts none on the runtimepath of the specs. Pinned at the commits
+      -- the sheets were written against; without one a feature sheet is a skip, which is red under CI.
+      checkouts = {
+        {
+          repo = "nvim-lua/plenary.nvim",
+          ref = "74b06c6c75e4eeb3108ec01852001636d85a932b",
+          why = "telescope.nvim needs it for the sheet pickers-items-telescope",
+        },
+        {
+          repo = "nvim-telescope/telescope.nvim",
+          ref = "1e1bab730218eaf97fce743be3f56e51075928ac",
+          why = "the real telescope picker of the sheet pickers-items-telescope",
+        },
+        {
+          repo = "ibhagwan/fzf-lua",
+          ref = "22f0bbd3140a8a3b34fec75e5a640513ca6d4ce3",
+          why = "the real fzf-lua picker of the sheet pickers-items-fzf-lua",
+        },
+        {
+          repo = "folke/snacks.nvim",
+          ref = "882c996cf28183f4d63640de0b4c02ec886d01f2",
+          why = "the real snacks picker of the sheet pickers-items-snacks",
+        },
+      },
+      packages = {
+        {
+          name = "fzf",
+          why = "fzf-lua runs fzf in a terminal of the child editor (sheet pickers-items-fzf-lua)",
+        },
+        {
+          name = "fd",
+          apt = "fd-find",
+          why = "the filegrep specs and the sheets of pickers.actions, scopes and keys run the real fd (fdfind on Ubuntu)",
+        },
+        { name = "ripgrep", why = "the filegrep specs and the feature sheets run the real rg" },
+      },
+      -- every leg installs fd and rg (packages above), so a missing one is a failure, not a skip
+      env = { PICKERS_REQUIRE_TOOLS = "1" },
+      publish = { why = "data.nvim and replacer.nvim check out pickers.nvim at ci-verified" },
+    },
+    steps = {
+      ["workflow-in-sync"] = { preset = "workflow-in-sync" },
+    },
+  },
   -- Findings the minimal conformance editor cannot avoid (docs/CONFORMANCE.md of testing.nvim); reviewed 2026-10-14.
   conformance = {
     -- gated: a failed check makes `scripts/test.sh conformance` exit 1
