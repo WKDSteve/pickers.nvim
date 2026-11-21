@@ -1889,6 +1889,174 @@ do
   vim.fn.delete(real)
 end
 
+-- ── pickers.entry_actions.ocr_image — read the text of an image entry ──────
+-- images.nvim and tesseract are stood in for (`images.ocr`, `images`,
+-- `pickers.integrations.images`), so nothing depends on either being installed.
+do
+  local ocr_image = require("pickers.entry_actions.ocr_image")
+  local prev = {
+    ocr = package.loaded["images.ocr"],
+    images = package.loaded["images"],
+    integ = package.loaded["pickers.integrations.images"],
+    state = package.loaded["telescope.actions.state"],
+    actions = package.loaded["telescope.actions"],
+    fzf = package.loaded["fzf-lua"],
+  }
+  local have_tesseract, started = true, {}
+  package.loaded["images.ocr"] = {
+    available = function()
+      return have_tesseract
+    end,
+  }
+  package.loaded["images"] = {
+    ocr = function(path)
+      started[#started + 1] = path
+      return true
+    end,
+  }
+  local integ = require("pickers.integrations.images")
+  package.loaded["pickers.integrations.images"] = setmetatable({
+    is_image = function(path)
+      return path:lower():match("%.png$") ~= nil
+    end,
+  }, { __index = integ })
+
+  local img = vim.fn.tempname() .. "_ocr.png"
+  local txt = vim.fn.tempname() .. "_ocr.txt"
+  vim.fn.writefile({ "x" }, img)
+  vim.fn.writefile({ "x" }, txt)
+  local target = vim.fn.fnamemodify(img, ":p")
+  local function started_n(n)
+    vim.wait(1000, function()
+      return #started >= n
+    end, 10)
+    return #started == n
+  end
+
+  check("ocr_image.available: images.nvim and tesseract there -> true", ocr_image.available())
+  have_tesseract = false
+  check("ocr_image.available: no tesseract -> false", not ocr_image.available())
+  check("ocr_image.target: no tesseract -> nil", ocr_image.target(img) == nil)
+  have_tesseract = true
+  check("ocr_image.target: an image -> its absolute path", ocr_image.target(img) == target)
+  check(
+    "ocr_image.target: nil, empty, a missing file, a non-image -> nil",
+    ocr_image.target(nil) == nil
+      and ocr_image.target("") == nil
+      and ocr_image.target(img .. ".missing") == nil
+      and ocr_image.target(txt) == nil
+  )
+  check("ocr_image.target: asking does not start the OCR", #started == 0)
+  check(
+    "ocr_image.run: hands images.nvim the path",
+    ocr_image.run(target) == true and started[1] == target
+  )
+
+  local r = require("pickers.keys").resolve(require("pickers.config").get())
+  check(
+    "keys.resolve: ocr_image carries <M-u> and the chord <leader>io",
+    has(r.ocr_image.lhs, "<M-u>") and has(r.ocr_image.lhs, "<leader>io")
+  )
+
+  -- telescope: closes the picker only when the action can run
+  local entry, closed = { path = img }, 0
+  package.loaded["telescope.actions.state"] = {
+    get_selected_entry = function()
+      return entry
+    end,
+  }
+  package.loaded["telescope.actions"] = {
+    close = function()
+      closed = closed + 1
+    end,
+  }
+  local tm = require("pickers.entry_actions.adapters.telescope").get_mappings()
+  check(
+    "entry_actions.telescope: ocr_image <M-u> (i, n), <leader>io (n only)",
+    tm.i["<M-u>"] ~= nil
+      and tm.n["<M-u>"] ~= nil
+      and tm.n["<leader>io"] ~= nil
+      and tm.i["<leader>io"] == nil
+  )
+  started = {}
+  tm.i["<M-u>"](1)
+  check(
+    "entry_actions.telescope: ocr closes the picker, then reads the image",
+    closed == 1 and started_n(1) and started[1] == target
+  )
+  entry = { path = txt }
+  tm.i["<M-u>"](1)
+  check(
+    "entry_actions.telescope: a non-image -> the picker stays open",
+    closed == 1 and started_n(1)
+  )
+
+  -- snacks
+  local snacks_adapter = require("pickers.entry_actions.adapters.snacks")
+  local sa = snacks_adapter.get_actions()
+  check(
+    "entry_actions.snacks: ocr_image is a named action with a desc, keyed",
+    type(sa.ocr_image) == "table"
+      and type(sa.ocr_image.desc) == "string"
+      and snacks_adapter.get_keys()["<leader>io"] == "ocr_image"
+  )
+  local snacks_closed = 0
+  local picker = {
+    close = function()
+      snacks_closed = snacks_closed + 1
+    end,
+  }
+  started = {}
+  sa.ocr_image.action(picker, { file = img })
+  check(
+    "entry_actions.snacks: ocr closes the picker, then reads the image",
+    snacks_closed == 1 and started_n(1) and started[1] == target
+  )
+  sa.ocr_image.action(picker, { file = txt })
+  check("entry_actions.snacks: a non-image -> the picker stays open", snacks_closed == 1)
+
+  -- fzf-lua: its process is closed already; a refusal resumes it, a read does not
+  local resumed = 0
+  package.loaded["fzf-lua"] = {
+    resume = function()
+      resumed = resumed + 1
+    end,
+  }
+  local fa = require("pickers.entry_actions.adapters.fzf").get_actions()
+  check("entry_actions.fzf: alt-u (ocr_image) present", type(fa["alt-u"]) == "function")
+  started = {}
+  fa["alt-u"]({ path = img })
+  check("entry_actions.fzf: ocr reads the image", started_n(1) and started[1] == target)
+  vim.wait(150)
+  check("entry_actions.fzf: a read does not resume the picker", resumed == 0)
+  fa["alt-u"]({ path = txt })
+  vim.wait(150, function()
+    return resumed > 0
+  end, 10)
+  check("entry_actions.fzf: a non-image resumes the picker", resumed == 1)
+
+  -- the cheatsheet offers the row only while it can work
+  local cheatsheet = require("pickers.cheatsheet")
+  check(
+    "cheatsheet: ocr_image is listed while OCR can run",
+    table.concat(cheatsheet.lines(), "\n"):find("OCR", 1, true) ~= nil
+  )
+  have_tesseract = false
+  check(
+    "cheatsheet: ocr_image is left out without tesseract",
+    table.concat(cheatsheet.lines(), "\n"):find("OCR", 1, true) == nil
+  )
+
+  package.loaded["images.ocr"] = prev.ocr
+  package.loaded["images"] = prev.images
+  package.loaded["pickers.integrations.images"] = prev.integ
+  package.loaded["telescope.actions.state"] = prev.state
+  package.loaded["telescope.actions"] = prev.actions
+  package.loaded["fzf-lua"] = prev.fzf
+  vim.fn.delete(img)
+  vim.fn.delete(txt)
+end
+
 -- ── default direct keys must not shadow an engine's own default ─────────────
 -- Read off the installed engines' defaults (snacks picker/config/defaults.lua,
 -- telescope mappings.lua, fzf-lua defaults.lua keymap.fzf/actions.files) plus

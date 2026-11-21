@@ -134,6 +134,7 @@ All of these live in the augroup `"pickers.nvim"` when lib.nvim is present; with
 | `open_system` | `<M-o>` · chord `<leader>sm` | patched | fixed (`alt-o`) | export only¹ |
 | `reveal_in_manager` | `<M-x>` · chord `<leader>fm` | patched | fixed (`alt-x`) | export only¹ |
 | `reveal_in_tree` | `<M-s>` · chord `<leader>ft` | patched | fixed (`alt-s`) | export only¹ |
+| `ocr_image` | `<M-u>` · chord `<leader>io` | patched | fixed (`alt-u`) | export only¹ |
 | `tab_next` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap: no Lua in `keymap.builtin`) | export only¹ + `keys.snacks_actions()` |
 | `tab_prev` | *(off, opt-in)* | patched (a pickers.tabs function) | — (fzf gap) | export only¹ + `keys.snacks_actions()` |
 

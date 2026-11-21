@@ -21,6 +21,7 @@ local path_copy = require("pickers.entry_actions.path_copy")
 local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
 local tree_reveal = require("pickers.entry_actions.tree_reveal")
+local ocr_image = require("pickers.entry_actions.ocr_image")
 
 local M = {}
 
@@ -108,6 +109,21 @@ local function do_system(action)
 end
 
 ---@internal
+---Read the text of the current entry with images.nvim's OCR (see
+---pickers.entry_actions.ocr_image). CLOSES the picker, but only once the action
+---can run: a refusal (no OCR, not an image) leaves it open.
+---@param prompt_bufnr integer
+local function do_ocr_image(prompt_bufnr)
+  local action_state = require("telescope.actions.state")
+  local abs = ocr_image.target(extract(action_state.get_selected_entry()))
+  if not abs then return end
+  require("telescope.actions").close(prompt_bufnr)
+  vim.schedule(function()
+    ocr_image.run(abs)
+  end)
+end
+
+---@internal
 ---Show the current entry in the file tree (see
 ---pickers.entry_actions.tree_reveal). CLOSES the picker, but only once the
 ---action can run: a refusal (no tree, no path) leaves it open.
@@ -166,6 +182,7 @@ function M.get_mappings()
   bind("cheatsheet", do_cheatsheet)
   bind(link_insert.ACTION, do_link_insert)
   bind(tree_reveal.ACTION, do_tree_reveal)
+  bind(ocr_image.ACTION, do_ocr_image)
 
   for _, fmt in ipairs(path_copy.FORMAT_ORDER) do
     bind(path_copy.ACTION_FOR[fmt], do_copy(fmt))

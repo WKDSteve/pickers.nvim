@@ -195,6 +195,12 @@ M.ACTIONS = {
     modes = { "i", "n" },
     chord_modes = { "n" },
   },
+  -- Read the text of an image entry with images.nvim's OCR (pickers.entry_actions.ocr_image).
+  ocr_image = {
+    default = { "<M-u>", "<leader>io" },
+    modes = { "i", "n" },
+    chord_modes = { "n" },
+  },
   -- Opt-in (false = unbound): switch to the next/previous target of the
   -- active pickers.tabs group, the typed query carried along. Unbound by
   -- default because <Tab> is telescope's multi-select toggle -- a host that
@@ -233,6 +239,7 @@ M.ORDER = {
   "open_system",
   "reveal_in_manager",
   "reveal_in_tree",
+  "ocr_image",
   "tab_next",
   "tab_prev",
 }

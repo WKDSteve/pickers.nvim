@@ -203,6 +203,10 @@ local M = {
     -- something only when a tree that can reveal a path is loaded
     -- (filetree.nvim, through lib.nvim.explorer).
     reveal_in_tree = { "<M-s>", "<leader>ft" },
+    -- Read the text of an image entry (pickers.entry_actions.ocr_image): images.nvim's OCR (tesseract), the
+    -- text in a scratch split; closes the picker. Does something only for an image, with images.nvim and
+    -- tesseract there.
+    ocr_image = { "<M-u>", "<leader>io" },
   },
 
   -- Native picker-history file(s) under stdpath("data")/pickers.nvim/history.

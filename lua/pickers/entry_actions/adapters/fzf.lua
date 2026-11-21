@@ -51,6 +51,7 @@ local path_copy = require("pickers.entry_actions.path_copy")
 local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
 local tree_reveal = require("pickers.entry_actions.tree_reveal")
+local ocr_image = require("pickers.entry_actions.ocr_image")
 
 local M = {}
 
@@ -133,6 +134,23 @@ local function do_system(action)
 end
 
 ---@internal
+---Read the text of the first selected entry with images.nvim's OCR (see
+---pickers.entry_actions.ocr_image). fzf-lua has already closed its process; a
+---refusal (no OCR, not an image) resumes the picker, a read does not -- the
+---text in its split is the answer.
+---@param selected table|string
+local function do_ocr_image(selected)
+  local abs = ocr_image.target(extract_all(selected)[1])
+  if not abs then
+    resume()
+    return
+  end
+  vim.defer_fn(function()
+    ocr_image.run(abs)
+  end, 50)
+end
+
+---@internal
 ---Show the first selected entry in the file tree (see
 ---pickers.entry_actions.tree_reveal). fzf-lua has already closed its process;
 ---a refusal (no tree, no path) resumes the picker, a reveal does not -- the
@@ -200,6 +218,10 @@ local LINK_INSERT_KEY = "alt-n"
 local TREE_REVEAL_KEY = "alt-s"
 
 ---@internal
+---The fixed fzf key of the OCR action.
+local OCR_IMAGE_KEY = "alt-u"
+
+---@internal
 ---The fixed fzf keys of the system actions, keyed by system action.
 ---@type table<string, string>
 local SYSTEM_KEYS = {
@@ -225,6 +247,7 @@ for action, key in pairs(SYSTEM_KEYS) do
 end
 FZF_OVERRIDES[link_insert.ACTION] = LINK_INSERT_KEY
 FZF_OVERRIDES[tree_reveal.ACTION] = TREE_REVEAL_KEY
+FZF_OVERRIDES[ocr_image.ACTION] = OCR_IMAGE_KEY
 
 local function do_cheatsheet()
   -- Let the fzf terminal buffer finish closing before opening the panel
@@ -259,6 +282,7 @@ function M.get_actions()
   end
   actions[LINK_INSERT_KEY] = do_link_insert
   actions[TREE_REVEAL_KEY] = do_tree_reveal
+  actions[OCR_IMAGE_KEY] = do_ocr_image
   for action, key in pairs(SYSTEM_KEYS) do
     actions[key] = do_system(action)
   end

@@ -75,6 +75,7 @@ local SKIP = {
   open_system = true,
   reveal_in_manager = true,
   reveal_in_tree = true,
+  ocr_image = true,
 }
 
 --- The pickers.nvim-side actions snacks resolves by name from the `win`

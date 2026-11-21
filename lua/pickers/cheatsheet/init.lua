@@ -60,6 +60,7 @@ M.DESCRIPTIONS = {
   open_system = "Open with the system default application",
   reveal_in_manager = "Reveal in the system file manager",
   reveal_in_tree = "Show in the file tree (closes the picker)",
+  ocr_image = "Read the text of the image (OCR, closes the picker)",
   tab_next = "Next tab-group target",
   tab_prev = "Previous tab-group target",
 }
@@ -97,6 +98,7 @@ local GROUPS = {
   },
   { "System", { "open_system", "reveal_in_manager" } },
   { "Tree", { "reveal_in_tree" } },
+  { "Image", { "ocr_image" } },
 }
 
 ---Actions that are listed only while they can do something, asked each time
@@ -105,6 +107,9 @@ local GROUPS = {
 local OFFERED = {
   reveal_in_tree = function()
     return require("pickers.entry_actions.tree_reveal").available()
+  end,
+  ocr_image = function()
+    return require("pickers.entry_actions.ocr_image").available()
   end,
 }
 

@@ -158,6 +158,7 @@ snacks. See `lua/pickers/keys/`.
 | `open_system` | `<M-o>` · `<leader>sm` | ✓ | fixed (`alt-o`) | ✓ |
 | `reveal_in_manager` | `<M-x>` · `<leader>fm` | ✓ | fixed (`alt-x`) | ✓ |
 | `reveal_in_tree` | `<M-s>` · `<leader>ft` | ✓ | fixed (`alt-s`) | ✓ |
+| `ocr_image` | `<M-u>` · `<leader>io` | ✓ | fixed (`alt-u`) | ✓ |
 
 For the path/system actions the first lhs is a **direct key** (Ctrl/Alt — works
 in the prompt, insert *and* normal mode); everything after the `·` is a

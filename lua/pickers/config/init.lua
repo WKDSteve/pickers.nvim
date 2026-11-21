@@ -110,6 +110,7 @@ local KEYS_ACTIONS = {
   "open_system",
   "reveal_in_manager",
   "reveal_in_tree",
+  "ocr_image",
   -- Opt-in tab-group switch actions (pickers.keys.ACTIONS.tab_next/tab_prev).
   "tab_next",
   "tab_prev",

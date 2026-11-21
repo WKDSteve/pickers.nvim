@@ -10,6 +10,8 @@ a changelog.
 
 ---
 
+[x] **`ocr_image`: read the text of an image entry.** `<M-u>` (chord `<leader>io`, fzf-lua `alt-u`) hands the current image entry to images.nvim's OCR (`images.ocr`, tesseract; the text opens in a scratch split) and closes the picker, as `reveal_in_tree` does. Offered only with images.nvim and tesseract there (the cheatsheet leaves the row out otherwise); a non-image keeps the picker open. `pickers.entry_actions.ocr_image`, covered in `TESTS/pickers_spec.lua` with stand-ins for images.nvim.
+
 [x] **The first fzf-lua picker no longer waits for `fzf --version`.** fzf-lua asks for the version synchronously on every picker (`utils.fzf_version`, 243-505 ms through a shim) and has no option to hand it in. `pickers.engines.fzf_version` looks it up once, asynchronously, when fzf-lua has loaded, and wraps `utils.fzf_version` to answer from that result (0.07 ms); until the lookup is done fzf-lua's own call runs. `TESTS/fzf_version_spec.lua` covers it.
 
 [x] **smart and filegrep list each root once instead of running fd per keystroke.** Every keystroke of

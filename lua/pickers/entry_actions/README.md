@@ -240,6 +240,7 @@ require("pickers").setup({
     open_system           = { "<M-o>", "<leader>sm" },
     reveal_in_manager     = { "<M-x>", "<leader>fm" },
     reveal_in_tree        = { "<M-s>", "<leader>ft" },
+    ocr_image             = { "<M-u>", "<leader>io" },
     -- ...preview_scroll_*/history_* also live here, see docs/keymaps.md
   },
 })

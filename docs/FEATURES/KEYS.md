@@ -175,6 +175,7 @@ that still makes sense on a picker result row (a plain path string, not a
 | `open_system` | `<M-o>` · `<leader>sm` | opens with the OS default application |
 | `reveal_in_manager` | `<M-x>` · `<leader>fm` | shows the entry in the system file manager |
 | `reveal_in_tree` | `<M-s>` · `<leader>ft` | shows the entry in the file tree (closes the picker) |
+| `ocr_image` | `<M-u>` · `<leader>io` | reads the text of an image entry with images.nvim's OCR into a scratch split (closes the picker; needs images.nvim and tesseract) |
 
 **Marks are the picker's multi-selection.** filetree.nvim copies "the marked
 nodes if any, else the node under the cursor"; here `<Tab>` selects entries and

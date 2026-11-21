@@ -35,6 +35,7 @@
 ---@field open_system?          Pickers.KeyBinding Open the current entry with the system default application. Default: { "<M-o>", "<leader>sm" }
 ---@field reveal_in_manager?    Pickers.KeyBinding Reveal the current entry in the system file manager. Default: { "<M-x>", "<leader>fm" }
 ---@field reveal_in_tree?       Pickers.KeyBinding Show the current entry in the file tree (closes the picker; needs a tree that can reveal, e.g. filetree.nvim). Default: { "<M-s>", "<leader>ft" }
+---@field ocr_image?             Pickers.KeyBinding Read the text of the current image entry with images.nvim's OCR (closes the picker; needs images.nvim and tesseract). Default: { "<M-u>", "<leader>io" }
 ---@field tab_next?             Pickers.KeyBinding Next target of the active tab group. Default: false (opt-in)
 ---@field tab_prev?             Pickers.KeyBinding Previous target of the active tab group. Default: false (opt-in)
 

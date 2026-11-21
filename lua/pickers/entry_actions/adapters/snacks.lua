@@ -30,6 +30,7 @@ local path_copy = require("pickers.entry_actions.path_copy")
 local link_insert = require("pickers.entry_actions.link_insert")
 local system = require("pickers.entry_actions.system")
 local tree_reveal = require("pickers.entry_actions.tree_reveal")
+local ocr_image = require("pickers.entry_actions.ocr_image")
 
 local M = {}
 
@@ -119,6 +120,24 @@ local function do_system(action)
 end
 
 ---@internal
+---Read the text of the current item with images.nvim's OCR (see
+---pickers.entry_actions.ocr_image). CLOSES the picker, but only once the action
+---can run: a refusal (no OCR, not an image) leaves it open.
+---@param picker any
+---@param item any
+local function do_ocr_image(picker, item)
+  local abs = ocr_image.target(extract(item))
+  if not abs then return end
+  if picker then
+    ---@diagnostic disable-next-line: undefined-field
+    picker:close()
+  end
+  vim.schedule(function()
+    ocr_image.run(abs)
+  end)
+end
+
+---@internal
 ---Show the current item in the file tree (see
 ---pickers.entry_actions.tree_reveal). CLOSES the picker, but only once the
 ---action can run: a refusal (no tree, no path) leaves it open.
@@ -172,6 +191,7 @@ function M.get_actions()
     cheatsheet = { action = do_cheatsheet, desc = desc.cheatsheet },
     [link_insert.ACTION] = { action = do_link_insert, desc = desc[link_insert.ACTION] },
     [tree_reveal.ACTION] = { action = do_tree_reveal, desc = desc[tree_reveal.ACTION] },
+    [ocr_image.ACTION] = { action = do_ocr_image, desc = desc[ocr_image.ACTION] },
   }
   for fmt, action_name in pairs(path_copy.ACTION_FOR) do
     actions[action_name] = { action = do_copy(fmt), desc = desc[action_name] }
@@ -194,6 +214,7 @@ local function action_names()
     names[#names + 1] = action_name
   end
   names[#names + 1] = tree_reveal.ACTION
+  names[#names + 1] = ocr_image.ACTION
   return names
 end
 
