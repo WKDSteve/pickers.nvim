@@ -55,13 +55,19 @@ local before = sync_calls
 local v2, rc = utils.fzf_version({ fzf_bin = bin })
 check("then the answer comes from the cache", sync_calls == before and rc == 0 and v2[2] == 99)
 v2[2] = 0
-check("a caller changing the answer does not touch the cache", utils.fzf_version({ fzf_bin = bin })[2] == 99)
+check(
+  "a caller changing the answer does not touch the cache",
+  utils.fzf_version({ fzf_bin = bin })[2] == 99
+)
 
 package.loaded["fzf-lua.utils"] = { fzf_version = function() end }
-check("a fzf-lua that looks different is left alone", (function()
-  package.loaded["pickers.engines.fzf_version"] = nil
-  return require("pickers.engines.fzf_version").install() == false
-end)())
+check(
+  "a fzf-lua that looks different is left alone",
+  (function()
+    package.loaded["pickers.engines.fzf_version"] = nil
+    return require("pickers.engines.fzf_version").install() == false
+  end)()
+)
 
 print(("\n%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

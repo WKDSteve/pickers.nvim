@@ -111,7 +111,11 @@ local function run(engine)
 
   -- fzf-lua asks for `fzf --version` synchronously on every picker; answer it from a lookup done off the
   -- main path (pickers.engines.fzf_version). Independent of what the contributions ask for.
-  if engine == "fzf-lua" then pcall(function() require("pickers.engines.fzf_version").install() end) end
+  if engine == "fzf-lua" then
+    pcall(function()
+      require("pickers.engines.fzf_version").install()
+    end)
+  end
 
   local current = SNAPSHOT[engine]()
   local spec = {}
