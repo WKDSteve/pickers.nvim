@@ -100,10 +100,8 @@ return {
       env = {
         -- every leg installs fd and rg (packages above), so a missing one is a failure, not a skip
         PICKERS_REQUIRE_TOOLS = "1",
-        -- macOS: the child sandbox lives below dirname(tempname()) of the runner, and from /var/folders/.../T the
-        -- RPC socket fzf-lua connects to in a sheet's child is longer than the 104 bytes of a Unix socket path
-        -- (pipe_connect fails with ENOTSOCK, a hit-enter prompt). Linux uses /tmp anyway; Windows reads TMP/TEMP.
-        TMPDIR = "/tmp",
+        -- TMPDIR=/tmp on macOS (the RPC socket of fzf-lua in a sheet's child) is the generator's default since
+        -- testing.nvim@402296e, no longer an env of this repository.
       },
       publish = { why = "data.nvim and replacer.nvim check out pickers.nvim at ci-verified" },
     },
