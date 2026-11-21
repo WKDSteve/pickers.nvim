@@ -280,16 +280,19 @@ end
 ---Combined grep + find-files picker (the `smart` action).
 ---
 --- Uses fzf-lua's "live" mode (fuzzy matching disabled, contents reloaded per
---- keystroke) with a Lua contents function: on every query the shared core
---- (pickers.smart.query) returns an already-merged, already-ranked list and we
---- emit it as grep-style (`path:line:col:text`) / plain-path lines. `--no-sort`
+--- keystroke) with a Lua contents function: on every query it hands fzf-lua a
+--- writer that starts the shared core (pickers.smart.query) as a job through
+--- one `pickers.smart.live` runner (debounced, the newest query wins, the
+--- editor goes on while rg/fd run) and, once the job is done, writes the
+--- already-merged, already-ranked list as grep-style (`path:line:col:text`) /
+--- plain-path lines and closes the pipe. `--no-sort`
 --- keeps fzf from reordering, so OUR relevance ranking is preserved. The native
 --- `file_edit_or_qf` action + builtin previewer parse the grep lines and jump to
 --- the matched line (file rows open at the top).
 ---
---- NOTE: the Lua-function live path needs fzf-lua's transform mode, i.e. fzf
---- >= 0.45 with `multiprocess = false` and `rg_glob = true` (set below). On
---- older fzf, prefer telescope/snacks for the smart action.
+--- NOTE: the writer needs fzf-lua's `reload` path with the Lua function run in
+--- this Neovim (`multiprocess = false`). Its `transform` path (fzf >= 0.45 with
+--- `rg_glob = true`) only takes a finished list, so `rg_glob` stays off here.
 ---@param opts Pickers.EngineOpts
 function M.smart(opts)
   local ok, fzf = pcall(require, "fzf-lua")
@@ -300,16 +303,17 @@ function M.smart(opts)
   local actions = require("fzf-lua.actions")
 
   local root = opts.roots and opts.roots[1] or vim.uv.cwd()
+  local live = require("pickers.smart.live").new(opts.core, {
+    roots = opts.roots,
+    find = opts.find,
+    additional_args = opts.additional_args,
+  })
 
+  ---The rows of `items` as fzf lines.
   ---@internal
-  ---@param query string
+  ---@param items Pickers.Smart.Item[]
   ---@return string[]
-  local function contents(query)
-    local items = require("pickers.smart").core(opts.core).query(query or "", {
-      roots = opts.roots,
-      find = opts.find,
-      additional_args = opts.additional_args,
-    })
+  local function lines_of(items)
     local lines = {}
     for i, it in ipairs(items) do
       -- Prefer a cwd-relative path (keeps "file:line:col" parseable — an
@@ -325,13 +329,30 @@ function M.smart(opts)
     return lines
   end
 
+  ---fzf-lua calls this per query (`{ query }`, or the query itself) and then the
+  ---writer it returns with its line callback; `write(nil)` closes the pipe. A
+  ---search superseded by a newer query closes its pipe without rows.
+  ---@internal
+  ---@param query string|string[]|nil
+  ---@return fun(write: fun(line: string|nil))
+  local function contents(query)
+    if type(query) == "table" then query = query[1] end
+    return function(write)
+      live:run(type(query) == "string" and query or "", function(items)
+        for _, line in ipairs(items and lines_of(items) or {}) do
+          write(line)
+        end
+        write(nil)
+      end)
+    end
+  end
+
   fzf.fzf_live(contents, {
     prompt = opts.prompt or "Smart> ",
     query = opts.query,
     cwd = root,
     is_live = true,
     multiprocess = false,
-    rg_glob = true,
     previewer = "builtin",
     file_icons = false,
     git_icons = false,

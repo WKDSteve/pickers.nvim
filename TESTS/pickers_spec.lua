@@ -33,6 +33,22 @@ local passed, failed = 0, 0
 -- near the end, which turns it back on.
 vim.g.pickers_smart_listing = false
 
+---What a `vim.system` stand-in hands out: the exit callback gets `res` at once, and `wait()`
+---raises -- the search cores must never block the editor on a process (they start it with an exit
+---callback; `pickers.smart.job`).
+---@param res table|nil
+---@param on_exit fun(res: table|nil)|nil
+---@return table
+local function exited(res, on_exit)
+  if on_exit then on_exit(res) end
+  return {
+    wait = function()
+      error("vim.system():wait() blocks the editor", 2)
+    end,
+    kill = function() end,
+  }
+end
+
 local function check(name, cond, detail)
   if cond then
     passed = passed + 1
@@ -3846,12 +3862,8 @@ do
   require("lib.nvim.cross.executable").clear()
 
   local next_result
-  vim.system = function(_cmd, _opts)
-    return {
-      wait = function()
-        return next_result
-      end,
-    }
+  vim.system = function(_cmd, _opts, on_exit)
+    return exited(next_result, on_exit)
   end
 
   next_result = { code = 0, signal = 0, stdout = "" }
@@ -3949,7 +3961,7 @@ do
   -- machine) put there so the stub above is what filegrep sees.
   require("lib.nvim.cross.executable").clear()
   local spawned = 0
-  vim.system = function(cmd, _)
+  vim.system = function(cmd, _, on_exit)
     spawned = spawned + 1
     local out
     if cmd[1] == "fd" then
@@ -3959,11 +3971,7 @@ do
     else
       out = "docs/akronyms.md:3:1:  NWBC here\nsrc/b.lua:1:1:NWBC\n"
     end
-    return {
-      wait = function()
-        return { code = 0, signal = 0, stdout = out }
-      end,
-    }
+    return exited({ code = 0, signal = 0, stdout = out }, on_exit)
   end
 
   local opts = { roots = { "/r" }, find = {} }
@@ -4000,12 +4008,8 @@ do
 
   -- rg --vimgrep prints one row per match on the first matching line.
   local rg_rows = "a.txt:1:1:foo and foo\na.txt:1:9:foo and foo\nb.txt:2:1:foo\n"
-  vim.system = function()
-    return {
-      wait = function()
-        return { code = 0, signal = 0, stdout = rg_rows }
-      end,
-    }
+  vim.system = function(_, _o, on_exit)
+    return exited({ code = 0, signal = 0, stdout = rg_rows }, on_exit)
   end
   filegrep.clear_cache()
   local dup = filegrep.query("grep=foo", opts)
@@ -4014,14 +4018,10 @@ do
   -- A run that could not be spawned must be retried, not replayed from the cache.
   local fail = true
   local fail_spawns = 0
-  vim.system = function()
+  vim.system = function(_, _o, on_exit)
     fail_spawns = fail_spawns + 1
     if fail then error("spawn failed") end
-    return {
-      wait = function()
-        return { code = 0, signal = 0, stdout = rg_rows }
-      end,
-    }
+    return exited({ code = 0, signal = 0, stdout = rg_rows }, on_exit)
   end
   filegrep.clear_cache()
   local _, probs = filegrep.query("grep=foo", opts)
@@ -4101,7 +4101,7 @@ do
   require("lib.nvim.cross.executable").clear()
 
   local calls, rg_rows, narrow_out = {}, "a.txt:1:1:x\nb.txt:2:1:y\n", "b.txt\n"
-  vim.system = function(cmd)
+  vim.system = function(cmd, _o, on_exit)
     calls[#calls + 1] = vim.deepcopy(cmd)
     local out
     if cmd[1] == "fd" then
@@ -4111,11 +4111,7 @@ do
     else
       out = rg_rows
     end
-    return {
-      wait = function()
-        return { code = 0, signal = 0, stdout = out }
-      end,
-    }
+    return exited({ code = 0, signal = 0, stdout = out }, on_exit)
   end
   local function index_of(list, val)
     for i, v in ipairs(list) do
@@ -4431,9 +4427,15 @@ do
     ["pickers.engines.snacks"] = package.loaded["pickers.engines.snacks"],
   }
   package.loaded["pickers.filegrep"] = {
-    query = function(prompt, o)
+    query = function()
+      error("an engine ran the core synchronously (it blocks the editor)")
+    end,
+    query_async = function(prompt, o, on_done)
       queries[#queries + 1] = { prompt = prompt, opts = o }
-      return { fake_item }, {}
+      vim.schedule(function()
+        on_done({ fake_item }, {})
+      end)
+      return { cancel = function() end }
     end,
   }
   local eopts = {
@@ -4474,10 +4476,19 @@ do
   package.loaded["pickers.engines.telescope"] = nil
   require("pickers.engines.telescope").smart(eopts)
   check("engines.telescope.smart: the query seeds the prompt", tcap.default_text == "seed grep=zz")
-  local tres = tcap.finder.fn("typed")
+  local tres, tdone = {}, false
+  tcap.finder("typed", function(entry)
+    tres[#tres + 1] = entry
+  end, function()
+    tdone = true
+  end)
+  check("engines.telescope.smart: the finder returns before the search is done", not tdone)
+  vim.wait(2000, function()
+    return tdone
+  end, 5)
   check(
     "engines.telescope.smart: opts.core picks the query core",
-    queries[#queries].prompt == "typed" and tres[1] == fake_item
+    queries[#queries].prompt == "typed" and tres[1] ~= nil and tres[1].value == fake_item
   )
 
   -- fzf-lua
@@ -4493,9 +4504,25 @@ do
   package.loaded["pickers.engines.fzf"] = nil
   require("pickers.engines.fzf").smart(eopts)
   check("engines.fzf.smart: the query seeds the prompt", fcap.query == "seed grep=zz")
+  local flines, fclosed = {}, false
+  fcontents({ "typed" })(function(line)
+    if line == nil then
+      fclosed = true
+    else
+      flines[#flines + 1] = line
+    end
+  end)
+  check("engines.fzf.smart: the writer returns before the search is done", not fclosed)
+  vim.wait(2000, function()
+    return fclosed
+  end, 5)
   check(
     "engines.fzf.smart: content rows are path:line:col:text via the chosen core",
-    fcontents("typed")[1] == "a.txt:3:2:hit" and queries[#queries].prompt == "typed"
+    flines[1] == "a.txt:3:2:hit" and queries[#queries].prompt == "typed"
+  )
+  check(
+    "engines.fzf.smart: the reload path (rg_glob off: transform takes no writer)",
+    fcap.rg_glob == nil
   )
 
   -- snacks
@@ -4508,10 +4535,68 @@ do
   package.loaded["pickers.engines.snacks"] = nil
   require("pickers.engines.snacks").smart(eopts)
   check("engines.snacks.smart: the query seeds the prompt", scap.search == "seed grep=zz")
-  local sres = scap.finder(nil, { filter = { search = "typed" } })
+  -- snacks' task, as far as the finder uses it: suspend yields its coroutine, resume continues it.
+  local task = { handlers = {} }
+  function task:on(event, fn)
+    self.handlers[event] = fn
+    return self
+  end
+  function task:suspend()
+    self.suspended = true
+    coroutine.yield()
+  end
+  function task:resume()
+    if not self.suspended then return end
+    self.suspended = false
+    assert(coroutine.resume(self.co))
+  end
+  local sres = {}
+  local find = scap.finder(nil, { filter = { search = "typed" }, async = task })
+  task.co = coroutine.create(function()
+    find(function(item)
+      sres[#sres + 1] = item
+    end)
+    task.finished = true
+  end)
+  assert(coroutine.resume(task.co))
+  check("engines.snacks.smart: the finder suspends while the search runs", task.suspended == true)
+  vim.wait(2000, function()
+    return task.finished == true
+  end, 5)
   check(
     "engines.snacks.smart: rows carry file and position from the chosen core",
-    sres[1].file == "/r/a.txt" and sres[1].pos[1] == 3 and queries[#queries].prompt == "typed"
+    sres[1] ~= nil
+      and sres[1].file == "/r/a.txt"
+      and sres[1].pos[1] == 3
+      and queries[#queries].prompt == "typed"
+  )
+
+  -- snacks emits a task's abort a step later: by then the next prompt's search runs and must go on
+  ---@return table task, table rows
+  local function start_task(search)
+    local t = { handlers = {} }
+    t.on, t.suspend, t.resume = task.on, task.suspend, task.resume
+    local rows = {}
+    local f = scap.finder(nil, { filter = { search = search }, async = t })
+    t.co = coroutine.create(function()
+      f(function(item)
+        rows[#rows + 1] = item
+      end)
+      t.finished = true
+    end)
+    assert(coroutine.resume(t.co))
+    return t, rows
+  end
+  local t1, rows1 = start_task("one")
+  local t2, rows2 = start_task("two")
+  check("engines.snacks.smart: the older task ends without rows", t1.finished and #rows1 == 0)
+  t1.handlers.abort()
+  vim.wait(2000, function()
+    return t2.finished == true
+  end, 5)
+  check(
+    "engines.snacks.smart: a late abort of the older task leaves the newer search running",
+    t2.finished == true and #rows2 == 1
   )
 
   for name, mod in pairs(prev) do
@@ -4540,14 +4625,10 @@ do
   search.reset_tool_retry()
 
   local calls, reply = {}, { code = 0, signal = 0, stdout = "" }
-  vim.system = function(cmd)
+  vim.system = function(cmd, _o, on_exit)
     calls[#calls + 1] = vim.deepcopy(cmd)
     local r = type(reply) == "function" and reply(cmd) or reply
-    return {
-      wait = function()
-        return r
-      end,
-    }
+    return exited(r, on_exit)
   end
   local notes = {}
   vim.notify = function(msg)
@@ -4881,14 +4962,10 @@ do
   search.reset_tool_retry()
 
   local calls, reply = {}, nil
-  vim.system = function(cmd)
+  vim.system = function(cmd, _o, on_exit)
     calls[#calls + 1] = vim.deepcopy(cmd)
     local r = reply(cmd)
-    return {
-      wait = function()
-        return r
-      end,
-    }
+    return exited(r, on_exit)
   end
   local deferred, skew = {}, 0
   vim.defer_fn = function(fn)
@@ -10353,6 +10430,275 @@ do
   vim.fn.delete(tmp, "rf")
   vim.g.pickers_smart_listing = false
   package.loaded["pickers.smart.search"] = nil
+end
+
+-- ── async search: the editor never waits for rg/fd, the newest search wins ──
+do
+  for _, name in ipairs({
+    "pickers.smart.search",
+    "pickers.filegrep",
+    "pickers.smart",
+    "pickers.smart.live",
+  }) do
+    package.loaded[name] = nil
+  end
+  local search = require("pickers.smart.search")
+  local smart = require("pickers.smart")
+  local filegrep = require("pickers.filegrep")
+  local live_mod = require("pickers.smart.live")
+  local orig_system, orig_find, orig_shim = vim.system, search.find_tool, search.is_cmd_shim
+  local orig_listing, orig_collect = search.listing, search.collect
+  search.find_tool = function(names)
+    return type(names) == "table" and names[1] or names
+  end
+  search.is_cmd_shim = function()
+    return false
+  end
+  search.LISTING = false -- fd per query: a process the test controls
+  filegrep.clear_cache()
+
+  -- Processes that exit only when the test says so; `wait()` raises.
+  local procs = {}
+  vim.system = function(cmd, _, on_exit)
+    local p = { cmd = cmd, on_exit = on_exit, killed = false }
+    p.wait = function()
+      error("vim.system():wait() blocks the editor", 2)
+    end
+    p.kill = function(self)
+      self.killed = true
+    end
+    procs[#procs + 1] = p
+    return p
+  end
+  ---Let `p` exit with `stdout`; a killed one exits by signal, as libuv reports it.
+  local function finish(p, stdout)
+    if p.killed then
+      p.on_exit({ code = 0, signal = 15, stdout = "" })
+    else
+      p.on_exit({ code = 0, signal = 0, stdout = stdout })
+    end
+  end
+  local function drain(cond)
+    vim.wait(2000, cond, 5)
+  end
+  local opts = { roots = { "/r" }, find = {} }
+
+  -- query_async returns while fd/rg run; the result follows on the callback
+  local got
+  smart.query_async("needle", opts, function(items, problems)
+    got = { items = items, problems = problems }
+  end)
+  check(
+    "async: query_async returns before fd exits",
+    got == nil and #procs == 1 and procs[1].cmd[1] == "fd"
+  )
+  finish(procs[1], "src/needle.lua\n")
+  drain(function()
+    return #procs == 2
+  end)
+  check(
+    "async: rg starts once fd has exited",
+    #procs == 2 and procs[2].cmd[1] == "rg" and got == nil
+  )
+  finish(procs[2], "a.txt:1:1:needle here\n")
+  drain(function()
+    return got ~= nil
+  end)
+  check(
+    "async: the result arrives on the callback",
+    got ~= nil and #got.items == 2 and #got.problems == 0
+  )
+
+  -- the newest search wins: an older one is cancelled, killed, and its late exit changes nothing
+  procs = {}
+  local runner = live_mod.new(nil, opts, 0)
+  local first, second = "pending", "pending"
+  runner:run("old", function(items)
+    first = items
+  end)
+  runner:run("new", function(items)
+    second = items
+  end)
+  check("live: a newer search hands the older one nil", first == nil)
+  check("live: the older search's process is killed", procs[1] ~= nil and procs[1].killed)
+  finish(procs[1], "old.lua\n")
+  finish(procs[2], "new.lua\n")
+  drain(function()
+    return #procs == 3
+  end)
+  finish(procs[3], "")
+  drain(function()
+    return second ~= "pending"
+  end)
+  check(
+    "live: only the newest search's result is shown",
+    type(second) == "table" and #second == 1 and second[1].path == "new.lua",
+    vim.inspect(second)
+  )
+  check("live: the cancelled search starts nothing after its kill", #procs == 3)
+  check("live: the older callback is not called again", first == nil)
+
+  -- a core that cannot stop its search: its late result is still dropped
+  local late, shown = {}, {}
+  local r2 = live_mod.new(nil, opts, 0)
+  r2.core = {
+    query_async = function(q, _, cb)
+      late[q] = cb
+      return { cancel = function() end }
+    end,
+  }
+  for _, q in ipairs({ "a", "b" }) do
+    r2:run(q, function(items)
+      shown[#shown + 1] = q .. ":" .. (items and #items or "nil")
+    end)
+  end
+  late.b({ {}, {} }, {})
+  late.a({ {} }, {})
+  check(
+    "live: a late result of an older search is dropped",
+    table.concat(shown, ",") == "a:nil,b:2",
+    table.concat(shown, ",")
+  )
+
+  -- keystrokes inside the debounce start one search, for the last of them
+  local started, last
+  local r3 = live_mod.new(nil, opts, 20)
+  r3.core = {
+    query_async = function(q, _, cb)
+      started = (started or 0) + 1
+      vim.schedule(function()
+        cb({ { path = q } }, {})
+      end)
+      return { cancel = function() end }
+    end,
+  }
+  r3:run("a", function() end)
+  r3:run("ab", function() end)
+  r3:run("abc", function(items)
+    last = items
+  end)
+  check("live: nothing starts before the debounce", started == nil)
+  drain(function()
+    return last ~= nil
+  end)
+  check(
+    "live: keystrokes inside the debounce start one search",
+    started == 1 and last ~= nil and last[1].path == "abc"
+  )
+
+  -- a cancelled filegrep run is not memoised: the next search runs rg again
+  procs = {}
+  filegrep.clear_cache()
+  local answered = false
+  local job = filegrep.query_async("grep=foo", opts, function()
+    answered = true
+  end)
+  check("filegrep async: rg runs for grep=", #procs == 1 and procs[1].cmd[1] == "rg")
+  job:cancel()
+  check("filegrep async: cancel kills rg", procs[1].killed)
+  finish(procs[1], "")
+  vim.wait(50)
+  check("filegrep async: a cancelled job does not answer", not answered)
+  local fresh
+  filegrep.query_async("grep=foo", opts, function(items)
+    fresh = items
+  end)
+  check("filegrep async: a cancelled run is not memoised", #procs == 2)
+  finish(procs[2], "b.txt:2:1:foo\n")
+  drain(function()
+    return fresh ~= nil
+  end)
+  check("filegrep async: the new run's result", fresh ~= nil and #fresh == 1)
+
+  -- error paths reach the callback instead of leaving a picker waiting
+  vim.system = function()
+    error("ENOENT: no such program")
+  end
+  local res
+  filegrep.query_async("grep=bar", opts, function(items, problems)
+    res = { items = items, problems = problems }
+  end)
+  drain(function()
+    return res ~= nil
+  end)
+  check(
+    "async: a program that cannot start is reported",
+    res ~= nil and #res.items == 0 and (res.problems[1] or ""):find("failed to run") ~= nil
+  )
+  search.collect = function()
+    error("boom")
+  end
+  local crashed
+  smart.query_async("x", opts, function(items, problems)
+    crashed = { items = items, problems = problems }
+  end)
+  drain(function()
+    return crashed ~= nil
+  end)
+  check(
+    "async: an error in the core reaches the callback as a problem",
+    crashed ~= nil and #crashed.items == 0 and (crashed.problems[1] or ""):find("boom") ~= nil
+  )
+  search.collect = orig_collect
+
+  -- a listing still on its way suspends the job, not the editor
+  vim.system = function(cmd, _, on_exit)
+    local p = { cmd = cmd, on_exit = on_exit, killed = false }
+    p.wait = function()
+      error("vim.system():wait() blocks the editor", 2)
+    end
+    p.kill = function(self)
+      self.killed = true
+    end
+    procs[#procs + 1] = p
+    return p
+  end
+  procs = {}
+  search.LISTING = true
+  local entry = {
+    root = "/r",
+    rels = { "src/needle.lua" },
+    names = { "needle.lua" },
+    lower = { "needle.lua" },
+    done = false,
+    ok = false,
+    waiters = {},
+  }
+  search.listing = function()
+    return entry
+  end
+  local lgot
+  smart.query_async("needle", opts, function(items)
+    lgot = items
+  end)
+  check("async: a listing on its way suspends the job", lgot == nil and #procs == 0)
+  entry.done, entry.ok = true, true
+  for _, wake in ipairs(entry.waiters) do
+    wake()
+  end
+  drain(function()
+    return #procs == 1
+  end)
+  check("async: rg starts once the listing is done", #procs == 1 and procs[1].cmd[1] == "rg")
+  finish(procs[1], "")
+  drain(function()
+    return lgot ~= nil
+  end)
+  check("async: the listed file is in the result", lgot ~= nil and #lgot == 1)
+
+  vim.system = orig_system
+  search.find_tool, search.is_cmd_shim = orig_find, orig_shim
+  search.listing = orig_listing
+  search.LISTING = false
+  filegrep.clear_cache()
+  for _, name in ipairs({
+    "pickers.smart.search",
+    "pickers.filegrep",
+    "pickers.smart",
+    "pickers.smart.live",
+  }) do
+    package.loaded[name] = nil
+  end
 end
 
 -- ── Summary ─────────────────────────────────────────────────────────────────

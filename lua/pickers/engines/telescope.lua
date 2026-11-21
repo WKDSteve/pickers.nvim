@@ -230,8 +230,10 @@ end
 
 ---Combined grep + find-files picker (the `smart` action).
 ---
---- A dynamic finder re-runs the shared core (pickers.smart.query) on every
---- prompt change and returns an already-merged, already-ranked list. The picker
+--- A custom async finder starts the shared core (pickers.smart.query) as a job
+--- on every prompt change, through one `pickers.smart.live` runner (debounced,
+--- the newest prompt wins, the editor goes on while rg/fd run), and hands the
+--- already-merged, already-ranked list to telescope once the job is done. The picker
 --- is wired with `sorters.empty()` (constant score) so telescope preserves OUR
 --- relevance order instead of re-sorting — the whole point of the smart action
 --- is that a filename hit and a content hit interleave by relevance, which the
@@ -239,40 +241,58 @@ end
 --- the matched line for grep rows and previews from the top for file rows.
 ---@param opts Pickers.EngineOpts
 function M.smart(opts)
-  local ok, finders = pcall(require, "telescope.finders")
   local ok2, pickers = pcall(require, "telescope.pickers")
   local ok3, sorters = pcall(require, "telescope.sorters")
   local ok4, conf = pcall(require, "telescope.config")
-  if not (ok and ok2 and ok3 and ok4) then
+  if not (ok2 and ok3 and ok4) then
     notify.error("telescope modules unavailable")
     return
   end
+
+  local live = require("pickers.smart.live").new(opts.core, {
+    roots = opts.roots,
+    find = opts.find,
+    additional_args = opts.additional_args,
+  })
+  ---@param it Pickers.Smart.Item
+  local function entry_maker(it)
+    return {
+      value = it,
+      display = it.display,
+      ordinal = it.display,
+      filename = it.abspath,
+      lnum = it.lnum,
+      col = it.col,
+    }
+  end
+  -- Telescope calls a finder as `finder(prompt, process_result, process_complete)`
+  -- and `finder:close()` when the picker closes; results of an older prompt are
+  -- dropped by telescope itself (find id) and by the runner (newest wins).
+  local finder = setmetatable({
+    entry_maker = entry_maker,
+    close = function()
+      live:cancel()
+    end,
+  }, {
+    __call = function(_, prompt, process_result, process_complete)
+      live:run(prompt or "", function(items)
+        if not items then return end
+        for i, it in ipairs(items) do
+          local entry = entry_maker(it)
+          entry.index = i
+          if process_result(entry) then return end
+        end
+        process_complete()
+      end)
+    end,
+  })
 
   pickers
     .new({}, {
       prompt_title = opts.prompt or "Smart",
       default_text = opts.query,
       results_title = cheatsheet_hint(),
-      finder = finders.new_dynamic({
-        fn = function(prompt)
-          return require("pickers.smart").core(opts.core).query(prompt or "", {
-            roots = opts.roots,
-            find = opts.find,
-            additional_args = opts.additional_args,
-          })
-        end,
-        ---@param it Pickers.Smart.Item
-        entry_maker = function(it)
-          return {
-            value = it,
-            display = it.display,
-            ordinal = it.display,
-            filename = it.abspath,
-            lnum = it.lnum,
-            col = it.col,
-          }
-        end,
-      }),
+      finder = finder,
       sorter = sorters.empty(),
       previewer = conf.values.grep_previewer({}),
       attach_mappings = require("pickers.result_count").wrap_attach_mappings(nil),

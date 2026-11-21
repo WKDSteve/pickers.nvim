@@ -42,9 +42,10 @@ end
 
 ---The per-keystroke query core behind the engines' live `smart` picker:
 ---`pickers.smart` itself by default, `pickers.filegrep` for the filegrep
----action. Both expose the same `query(query, opts) -> items, problems`.
+---action. Both expose the same `query(query, opts) -> items, problems` and
+---`query_async(query, opts, on_done) -> job`.
 ---@param name "smart"|"filegrep"|nil
----@return { query: fun(query: string, opts: table): Pickers.Smart.Item[], string[] }
+---@return { query: fun(query: string, opts: table): Pickers.Smart.Item[], string[], query_async: fun(query: string, opts: table, on_done: fun(items: Pickers.Smart.Item[], problems: string[])): Pickers.Smart.Job }
 function M.core(name)
   if name == "filegrep" then return require("pickers.filegrep") end
   return M
@@ -91,6 +92,18 @@ function M.query(query, opts)
     sm.dedup_grep_rows
   )
   return ranked, problems
+end
+
+---`M.query` as a job (`pickers.smart.job`): returns at once, the processes run while the editor goes
+---on, and `on_done(items, problems)` follows on the main loop -- never for a job cancelled first.
+---@param query string
+---@param opts  { roots: string[], find: Pickers.FindOpts, additional_args?: string[] }
+---@param on_done fun(items: Pickers.Smart.Item[], problems: string[])
+---@return Pickers.Smart.Job
+function M.query_async(query, opts, on_done)
+  return require("pickers.smart.job").start(function()
+    return M.query(query, opts)
+  end, on_done)
 end
 
 return M

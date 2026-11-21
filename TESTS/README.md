@@ -36,6 +36,8 @@ they name.
 | `pickers.bindings-commands` | the same for the commands: `:Pickers` and its scopes, `tabs` and `browse`, the compat commands, `:RepoFiles`/`:RepoGrep`, `:FileGrep`, `:PickersRepeat`, `:PickersScopes` and the generated commands of the nine collections (`fd` is a stand-in) |
 | `pickers.bindings-snacks` | what hands over to the engine's own pickers, on the real snacks: `:Pickers builtin`, `:PickersResume` (the query comes back), `<leader>.` (the explorer) |
 | `pickers.system-fd-snacks` | `:FindOnSystem` with the real `fd` on the real snacks: the files below the folder typed that match are listed, the others not (a skip without `fd`, so on CI) |
+| `pickers.actions-smart-telescope` | the same on the real telescope: its finder only starts the search, the rows follow when `rg`/`fd` are done |
+| `pickers.actions-smart-fzf-lua` | the same on the real fzf-lua: the reload hands fzf a writer that the search fills when `rg`/`fd` are done |
 | `pickers.actions-smart-snacks` | the smart action and `:FileGrep` with the real `rg` and `fd` on the real snacks: a word finds a file by its content, a regex query by its name (fd for that keystroke), `:FileGrep` by path and `grep=` content |
 | `pickers.scopes-folder-drives-snacks` | `:FindInFolder` lists the folders with the real `fd --type d`, the one picked becomes the root of a files picker; `:Pickers drives grep` probes the drives (PowerShell, `df`) and stops before a search |
 | `pickers.keys-system-snacks` | `<M-o>` and `<M-x>` on a row of the real snacks: the file goes to the default application and the file manager, both stand-ins (`fakes`), on lib.nvim's Linux dispatch on every system |

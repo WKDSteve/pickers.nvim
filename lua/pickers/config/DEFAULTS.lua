@@ -244,7 +244,10 @@ local M = {
   --   weights.content  - multiplier for the grep content-match component
   --   weights.both     - flat bonus for a file that ALSO has grep hits
   --   limit            - max merged results kept after ranking
-  --   timeout          - per-command (rg/fd) wait timeout in ms
+  --   timeout          - per-command (rg/fd) time limit in ms (the editor does
+  --                      not wait for it: the search runs beside it)
+  --   debounce         - ms after the last keystroke before a search starts;
+  --                      a newer keystroke cancels the running search
   --   frecency         - opt-in recency/frequency ranking boost, off by default
   --   dedup_grep_rows  - collapse multiple grep hits per file to the best
   --                      line, off by default
@@ -256,6 +259,7 @@ local M = {
     },
     limit = 2000,
     timeout = 3000,
+    debounce = 30,
     frecency = {
       enabled = false,
       weight = 1.0,

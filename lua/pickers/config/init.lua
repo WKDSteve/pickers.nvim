@@ -127,6 +127,7 @@ local EXCEPTIONS = {
   ["result_count.interval_ms"] = { "number", min = 1 },
   ["smart.limit"] = { "number", min = 1 },
   ["smart.timeout"] = { "number", min = 1 },
+  ["smart.debounce"] = { "number", min = 0 },
   ["smart.frecency.dir"] = "string",
   -- Opt-in switches, nil = the engine keeps its own default (pickers.display_native).
   ["display.path_adaptive"] = "boolean",

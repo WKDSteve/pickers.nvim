@@ -2,12 +2,10 @@
 -- handrolled-ok: a retry stamp for a missing tool lookup, not a throttle
 ---@brief Runs fd (files) + rg (grep) for one query and returns raw candidates.
 ---@description
---- Synchronous by design: every engine adapter calls this from inside its own
---- per-keystroke callback (snacks finder / telescope dynamic fn / fzf-lua live
---- fn), each of which expects a finished result set to hand back. rg and fd are
---- fast and the engines debounce input, so a short blocking `vim.system():wait()`
---- keeps the shared core trivially portable across all three engines instead of
---- reinventing three different async result-streaming integrations.
+--- Written as straight-line code, but it never makes the editor wait: the engines run it as a job
+--- (`pickers.smart.job`, through `pickers.smart.live`), where every process run and every wait for a
+--- listing suspends the job until the process exits; the next keystroke cancels it. Called directly
+--- (no job) the same code waits for the exit callback with `vim.wait`.
 ---
 --- The two halves deliberately mirror the existing single-purpose actions so
 --- "smart" covers the same ground as running them separately:
@@ -33,6 +31,7 @@ local M = {}
 
 local uv = vim.uv or vim.loop
 local spawn_env = require("lib.nvim.cross.run.env")
+local job = require("pickers.smart.job")
 
 ---Seconds before a tool that was not found is looked up on PATH again.
 local TOOL_RETRY_S = 30
@@ -118,6 +117,7 @@ M.LISTING = vim.g.pickers_smart_listing ~= false
 ---@field done boolean
 ---@field ok boolean
 ---@field at number         hrtime (ms) the listing started
+---@field waiters fun()[]   called once when the listing is done
 
 ---@type table<string, Pickers.Smart.Listing>
 local listings = {}
@@ -160,8 +160,16 @@ function M.listing(root, find)
   local hit = listings[key]
   if hit and (not hit.done or now - hit.at < M.LIST_TTL_MS) then return hit end
   local fast = require("lib.nvim.fs.fast")
-  local entry =
-    { root = root, rels = {}, names = {}, lower = {}, done = false, ok = false, at = now }
+  local entry = {
+    root = root,
+    rels = {},
+    names = {},
+    lower = {},
+    done = false,
+    ok = false,
+    at = now,
+    waiters = {},
+  }
   listings[key] = entry
   -- A tool may print the root as given or resolved (`fd --absolute-path` follows a link in it: on macOS
   -- the temp folder `/var/...` is `/private/var/...`): cut whichever of the two the path starts with.
@@ -189,8 +197,32 @@ function M.listing(root, find)
     end
   end, function(ok)
     entry.done, entry.ok = true, ok
+    local waiters = entry.waiters
+    entry.waiters = {}
+    for _, wake in ipairs(waiters) do
+      wake()
+    end
   end)
   return entry
+end
+
+---Wait up to `timeout` ms for `entry` to be done, without blocking the editor inside a job
+---(`pickers.smart.job.await`).
+---@param entry Pickers.Smart.Listing
+---@param timeout integer
+function M.wait_listing(entry, timeout)
+  if entry.done then return end
+  job.await(function(done)
+    if entry.done then return done() end
+    local timer = vim.defer_fn(done, timeout)
+    entry.waiters[#entry.waiters + 1] = function()
+      if not timer:is_closing() then
+        timer:stop()
+        timer:close()
+      end
+      done()
+    end
+  end, timeout)
 end
 
 ---Start listing every root, so the first keystroke finds the list (ready or on its way).
@@ -234,9 +266,7 @@ function M.listed(root, find, query, timeout)
   local pattern, ignore_case = M.fd_pattern(query)
   if not pattern then return nil end
   local entry = M.listing(root, find)
-  if not entry.done then vim.wait(timeout, function()
-    return entry.done
-  end, 2) end
+  M.wait_listing(entry, timeout)
   local problem
   if not entry.done then
     problem = "listing "
@@ -400,7 +430,7 @@ end
 ---@internal
 ---@param tool string
 ---@param root string
----@param ok boolean               pcall status around the spawn+wait
+---@param ok boolean               false when the process could not be started (`res` is the error)
 ---@param res vim.SystemCompleted|nil
 ---@param benign_code integer|nil  an extra exit code that is not an error (rg: 1 = no matches)
 ---@return string|nil
@@ -455,9 +485,7 @@ function M.collect(opts)
     if fd and not listed then
       local cmd = { fd }
       vim.list_extend(cmd, M.fd_args(find, query))
-      local ok, res = pcall(function()
-        return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
-      end)
+      local ok, res = job.system(cmd, spawn_env.apply({ cwd = root, text = true }), timeout)
       local problem = M.classify_run("fd", root, ok, res)
       if problem then problems[#problems + 1] = problem end
       if ok and res and res.stdout then
@@ -483,9 +511,7 @@ function M.collect(opts)
     if rg and query ~= "" then
       local cmd = { rg }
       vim.list_extend(cmd, M.rg_args(find, opts.additional_args, query))
-      local ok, res = pcall(function()
-        return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
-      end)
+      local ok, res = job.system(cmd, spawn_env.apply({ cwd = root, text = true }), timeout)
       -- rg's own exit code 1 means "ran fine, matched nothing" -- benign.
       local problem = M.classify_run("rg", root, ok, res, 1)
       -- Exit 2 WITH hits is a partial success (one unreadable file or dangling

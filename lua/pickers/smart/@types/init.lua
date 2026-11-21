@@ -22,7 +22,8 @@
 ---@class Pickers.SmartConfig
 ---@field weights?          Pickers.Smart.Weights        Relative weighting of the score components
 ---@field limit?            integer                      Max merged results kept after ranking (default 2000)
----@field timeout?          integer                      Per-command wait timeout in ms (default 3000)
+---@field timeout?          integer                      Per-command (rg/fd) time limit in ms (default 3000)
+---@field debounce?         integer                      ms after the last keystroke before a search starts (default 30)
 ---@field frecency?         Pickers.Smart.FrecencyConfig  Opt-in recency/frequency ranking boost
 ---@field dedup_grep_rows?  boolean                      Collapse multiple grep hits per file to the best-scoring line (default false)
 

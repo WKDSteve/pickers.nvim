@@ -104,7 +104,8 @@ require("pickers").setup({
   smart = {
     weights = { filename = 1.0, content = 1.0, both = 25 },
     limit   = 2000,   -- max merged results kept after ranking
-    timeout = 3000,   -- per-command (rg/fd) wait timeout in ms
+    timeout = 3000,   -- per-command (rg/fd) time limit in ms
+    debounce = 30,    -- ms after the last keystroke before a search starts
     -- Opt-in recency/frequency ranking boost, disabled by default.
     frecency = {
       enabled = false,

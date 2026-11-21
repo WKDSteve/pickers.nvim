@@ -76,6 +76,22 @@ function _G.on_screen(text)
   return _G.screen_text():find(text, 1, true) ~= nil
 end
 
+---A project of three files as the cwd, for the smart/filegrep sheets: `needlek2_file.lua` (found by its name),
+---`plain.md` holding `quokka2` (found by its content) and `haystack.txt` (found by neither). Sets `_G.proj`.
+function _G.smart_project()
+  _G.proj = vim.fs.normalize(vim.fn.tempname())
+  local files = {
+    ["src/needlek2_file.lua"] = { "local x = 1" },
+    ["notes/plain.md"] = { "the quokka2 lives here" },
+    ["other/haystack.txt"] = { "nothing" },
+  }
+  for rel, lines in pairs(files) do
+    vim.fn.mkdir(vim.fs.dirname(_G.proj .. "/" .. rel), "p")
+    vim.fn.writefile(lines, _G.proj .. "/" .. rel)
+  end
+  vim.cmd.cd(_G.proj)
+end
+
 ---The rows of the list every sheet opens.
 local ROWS = { { text = "alpha one" }, { text = "beta two" }, { text = "alpha three" } }
 

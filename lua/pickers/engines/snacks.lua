@@ -206,14 +206,14 @@ end
 
 ---Combined grep + find-files picker (the `smart` action).
 ---
---- Implemented as a live picker with a custom *synchronous* finder: on every
---- prompt change snacks calls the finder with the raw search text
---- (`ctx.filter.search`), we run the shared core (pickers.smart.query) which
---- returns an already-merged, already-ranked list, and we hand that back as a
---- plain table. Returning a table takes snacks' sync finder path (no streaming),
---- and under `live = true` the secondary matcher pattern is empty, so snacks
---- preserves our order instead of re-fuzzy-sorting — i.e. OUR relevance ranking
---- is what the user sees. `format = "file"` renders file rows and grep rows
+--- Implemented as a live picker with an async finder: on every prompt change
+--- snacks calls the finder with the raw search text (`ctx.filter.search`); its
+--- task starts the shared core (pickers.smart.query) as a job through one
+--- `pickers.smart.live` runner, suspends (the editor goes on while rg/fd run)
+--- and adds the already-merged, already-ranked list once the job is done. A new
+--- prompt aborts the task, which cancels the job. Under `live = true` the
+--- secondary matcher pattern is empty, so snacks preserves our order instead of
+--- re-fuzzy-sorting — i.e. OUR relevance ranking is what the user sees. `format = "file"` renders file rows and grep rows
 --- (file + line) natively; the default `jump` confirm opens item.file at pos.
 ---@param opts Pickers.EngineOpts
 function M.smart(opts)
@@ -222,6 +222,12 @@ function M.smart(opts)
     notify.error("snacks.picker unavailable")
     return
   end
+
+  local live = require("pickers.smart.live").new(opts.core, {
+    roots = opts.roots,
+    find = opts.find,
+    additional_args = opts.additional_args,
+  })
 
   safe_call(Picker.pick, {
     source = "smart",
@@ -232,22 +238,36 @@ function M.smart(opts)
     preview = preview_fn(),
     matcher = { sort_empty = false },
     finder = function(_, ctx)
-      local items = require("pickers.smart").core(opts.core).query(ctx.filter.search or "", {
-        roots = opts.roots,
-        find = opts.find,
-        additional_args = opts.additional_args,
-      })
-      local out = {}
-      for i, it in ipairs(items) do
-        out[i] = {
-          text = it.display,
-          file = it.abspath,
-          pos = it.lnum and { it.lnum, (it.col or 1) - 1 } or nil,
-          line = it.text,
-          score = it.score,
-        }
+      local search = ctx.filter.search or ""
+      ---@async
+      return function(add)
+        local task = ctx.async
+        local items, done = nil, false
+        local token = live:run(search, function(result)
+          items, done = result, true
+          task:resume()
+        end)
+        -- snacks emits the abort of this task a step later, maybe after the next
+        -- prompt's search started: stop only this task's own search.
+        task:on("abort", function()
+          live:cancel(token)
+        end)
+        while not done do
+          task:suspend()
+        end
+        for _, it in ipairs(items or {}) do
+          add({
+            text = it.display,
+            file = it.abspath,
+            pos = it.lnum and { it.lnum, (it.col or 1) - 1 } or nil,
+            line = it.text,
+            score = it.score,
+          })
+        end
       end
-      return out
+    end,
+    on_close = function()
+      live:cancel()
     end,
   })
 end

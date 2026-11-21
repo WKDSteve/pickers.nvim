@@ -36,9 +36,17 @@ by name that *also* contains matches floats to the top.
 
 The scorer is engine-agnostic and pure: `smart.query(query, opts)` is the one
 entry point all three adapters drive, and each engine only has to provide a
-live-finder shape for it (snacks a sync live finder with `sort_empty = false`,
-telescope `new_dynamic` plus an empty sorter, fzf-lua the Lua-function live
-mode that needs `fzf ≥ 0.45`).
+live-finder shape for it (snacks an async live finder with `sort_empty = false`,
+telescope a finder object plus an empty sorter, fzf-lua the Lua-function live
+mode with a writer).
+
+The editor never waits for `rg`/`fd`: each keystroke starts the search as a
+job (`smart.query_async`, `pickers.smart.job`) `smart.debounce` ms (30) after
+the last key, and the picker gets the rows when the processes are done. The
+next keystroke cancels the running search and kills its processes, so only the
+result of the newest query is ever shown. Measured with `testing perf` on the
+smart sheet (StevesPC): 482 ms of blocked editor before (rg up to 220 ms per
+keystroke, fd 102 ms, filegrep's rg 82 ms), 0 ms now.
 
 The filenames come from **one listing per root**, not from an `fd` per
 keystroke: when the picker opens, `lib.nvim.fs.fast` lists every root (the file
@@ -53,8 +61,8 @@ before the first search turns it off. `filegrep` lists its files the same way.
 
 - **Module:** [`smart/`](../../lua/pickers/smart/) — `query`, `search`, `score`
 - **Usercmds:** `:Pickers <scope> smart`, `:{PascalName}Smart` per collection
-- **Config:** `smart = { weights, limit, timeout }`; `weights.both` is the
-  bonus for a file matched by both sources
+- **Config:** `smart = { weights, limit, timeout, debounce }`; `weights.both`
+  is the bonus for a file matched by both sources
 - **Keymaps:** opt-in `cwd_smart`, `config_smart`, `folder_smart`, and
   `keys.smart` per collection
 
@@ -100,7 +108,7 @@ spawns nothing.
   `:FileGrepConfig [query]`, `:{PascalName}FileGrep` per collection
 - **Keymaps:** opt-in `cwd_filegrep`, `mappings.<scope>_filegrep`, and
   `keys.filegrep` per collection
-- **Config:** shares `smart = { weights, limit, timeout }`
+- **Config:** shares `smart = { weights, limit, timeout, debounce }`
 - Details: [commands.md](../commands.md#the-filegrep-action)
 
 ## Search-flag escalation

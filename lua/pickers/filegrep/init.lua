@@ -38,6 +38,7 @@ local uv = vim.uv or vim.loop
 local search = require("pickers.smart.search")
 local score = require("pickers.smart.score")
 local spawn_env = require("lib.nvim.cross.run.env")
+local job = require("pickers.smart.job")
 local is_windows = require("lib.nvim.cross.platform.is_windows")
 
 ---A `grep=` value shorter than this (in characters) is ignored: a 1-char pattern
@@ -45,8 +46,8 @@ local is_windows = require("lib.nvim.cross.platform.is_windows")
 ---still typing.
 M.MIN_GREP_LEN = 2
 
----At most this many distinct `grep=` tokens run per query (each one is a
----process spawn on the main thread); further ones are ignored.
+---At most this many distinct `grep=` tokens run per query (each one is at
+---least one process spawn); further ones are ignored.
 M.MAX_GREP_TOKENS = 4
 
 ---How long a process result stays reusable, in seconds.
@@ -253,8 +254,10 @@ end
 ---processes of the same kind.
 ---
 --- * `spawn_failed` -- nothing ran: not memoised, retried on the next keystroke.
----   A `:wait()` that came back empty after the kill is NOT a spawn failure (the
+---   A wait that came back empty (no exit in time) is NOT a spawn failure (the
 ---   process did run): it counts as killed.
+--- * inside a job (`pickers.smart.job`) the run suspends the job, not the editor,
+---   and a cancelled job ends here (nothing is memoised for it).
 --- * rg exit 2 WITH hits is a partial success (an unreadable file, a dangling
 ---   symlink): the hits stand and there is no problem to report.
 --- * a run killed at the timeout keeps its partial hits AND its problem.
@@ -275,9 +278,7 @@ end
 ---@return boolean spawn_failed
 ---@return "killed"|"pattern"|false abort
 local function run(cmd, root, timeout, tool, benign_code)
-  local ok, res = pcall(function()
-    return vim.system(cmd, spawn_env.apply({ cwd = root, text = true })):wait(timeout)
-  end)
+  local ok, res = job.system(cmd, spawn_env.apply({ cwd = root, text = true }), timeout)
   local problem = search.classify_run(tool, root, ok, res, benign_code)
   local spawn_failed = not ok
   local killed = (ok and not res) or (res ~= nil and res.signal ~= nil and res.signal ~= 0)
@@ -322,11 +323,7 @@ local function list_files(root, find, timeout, fd)
     local key = table.concat({ "list", root, vim.inspect(find or {}) }, "\0")
     return cached(key, function()
       local entry = search.listing(root, find or {})
-      if not entry.done then
-        vim.wait(timeout, function()
-          return entry.done
-        end, 2)
-      end
+      search.wait_listing(entry, timeout)
       local paths = vim.list_slice(entry.rels)
       table.sort(paths)
       local problem
@@ -715,6 +712,18 @@ function M.query(query, opts)
 
   search.report(problems)
   return items, problems
+end
+
+---`M.query` as a job (`pickers.smart.job`): returns at once, the processes run while the editor goes
+---on, and `on_done(items, problems)` follows on the main loop -- never for a job cancelled first.
+---@param query string
+---@param opts  { roots: string[], find: Pickers.FindOpts, additional_args?: string[] }
+---@param on_done fun(items: Pickers.Smart.Item[], problems: string[])
+---@return Pickers.Smart.Job
+function M.query_async(query, opts, on_done)
+  return require("pickers.smart.job").start(function()
+    return M.query(query, opts)
+  end, on_done)
 end
 
 return M
