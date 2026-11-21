@@ -10,6 +10,8 @@ a changelog.
 
 ---
 
+[x] **The first fzf-lua picker no longer waits for `fzf --version`.** fzf-lua asks for the version synchronously on every picker (`utils.fzf_version`, 243-505 ms through a shim) and has no option to hand it in. `pickers.engines.fzf_version` looks it up once, asynchronously, when fzf-lua has loaded, and wraps `utils.fzf_version` to answer from that result (0.07 ms); until the lookup is done fzf-lua's own call runs. `TESTS/fzf_version_spec.lua` covers it.
+
 [x] **smart and filegrep list each root once instead of running fd per keystroke.** Every keystroke of
   the smart picker started `fd` and waited for it (90-145 ms, also for zero hits, through the scoop shim).
   Now the picker lists every root once when it opens (`lib.nvim.fs.fast`: the file helper, `fd`, `rg`,
