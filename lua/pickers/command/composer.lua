@@ -21,17 +21,7 @@ local ACTION_VALUES = { "files", "grep", "smart", "filegrep" }
 
 ---Prefix-filter a candidate list (case-sensitive, matches composer's own convention).
 ---@internal
----@param cands string[]
----@param lead string
----@return string[]
-local function prefix(cands, lead)
-  if lead == "" then return cands end
-  local out = {}
-  for _, c in ipairs(cands) do
-    if c:sub(1, #lead) == lead then out[#out + 1] = c end
-  end
-  return out
-end
+local prefix = require("lib.nvim.bindings.usercmd.prefix")
 
 -- dir's nav slot accepts aliases, numeric depth, "path=...", or (when the nav
 -- is omitted) an action word — smarter than any built-in type.
