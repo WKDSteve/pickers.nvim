@@ -6,7 +6,8 @@
 --- * Right click in the preview or the result list: a context menu
 ---   (`lib.nvim.contextmenu`, also re-exported by ui.nvim) -- open in
 ---   window/split/vsplit/tab, copy selection/line/file/path, go to a path via
----   gopath.nvim, copy/export the whole list, open with the system app.
+---   gopath.nvim, reveal the file in filetree.nvim, copy/export the whole list, open with the
+---   system app.
 ---
 --- The maps are buffer-local and live only while the picker window is the current
 --- one (`WinEnter` sets them, `WinLeave` removes them), so a previewed buffer is
@@ -195,6 +196,21 @@ local function list_to_buffer(picker)
   end)
 end
 
+---filetree.nvim's reveal function (shows a path in its tree), or nil when filetree is not
+---installed or not set up. A soft dependency: pickers never requires it.
+---@return (fun(path: string): boolean?)|nil
+function M.filetree_reveal()
+  local ok, ft = pcall(require, "filetree")
+  if not ok or type(ft) ~= "table" or type(ft.adapter) ~= "function" then return nil end
+  local oka, adapter = pcall(ft.adapter)
+  if not oka or type(adapter) ~= "table" or type(adapter.open_reveal) ~= "function" then
+    return nil
+  end
+  return function(path)
+    return adapter.open_reveal(path)
+  end
+end
+
 ---The menu items for a click on `part` of `picker`. nil when contextmenu is unavailable.
 ---@param picker table
 ---@param part "preview"|"list"
@@ -232,6 +248,8 @@ function M.menu_items(picker, part, win)
     end
   end
 
+  local reveal = file ~= nil and vim.uv.fs_stat(file) ~= nil and M.filetree_reveal() or nil
+
   local out = {}
   cm.group(
     out,
@@ -247,6 +265,21 @@ function M.menu_items(picker, part, win)
       local r = gopath_target
       after_close(picker, function()
         M.open_file(r.path, r.line or r.lnum, "edit")
+      end)
+    end),
+    cm.entry(reveal ~= nil, "Reveal in filetree", function()
+      after_close(picker, function()
+        local okr, res = pcall(reveal, file)
+        if not okr or res == false then
+          vim.notify(
+            ("could not reveal in filetree: %s%s"):format(
+              file,
+              okr and "" or (" (" .. tostring(res) .. ")")
+            ),
+            vim.log.levels.WARN,
+            { title = "pickers" }
+          )
+        end
       end)
     end)
   )

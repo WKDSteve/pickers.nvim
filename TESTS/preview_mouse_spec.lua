@@ -211,6 +211,105 @@ n = names(pmouse.menu_items(picker, "preview", preview_win))
 check("item without a file: no open entries", n["Open here"] == nil and n["Copy path"] == nil)
 picker.preview.item = saved
 
+-- ── "Reveal in filetree": only with filetree.nvim, calls its reveal with the path ──
+local function find_item(list, name)
+  for _, it in ipairs(list or {}) do
+    if it.name == name then return it end
+  end
+end
+local function run(it)
+  if type(it.cmd) == "function" then
+    it.cmd()
+  else
+    vim.cmd(it.cmd)
+  end
+end
+
+package.loaded["filetree"] = nil
+package.preload["filetree"] = nil
+n = names(pmouse.menu_items(picker, "list", list_win))
+check("without filetree: no 'Reveal in filetree'", n["Reveal in filetree"] == nil)
+
+package.loaded["filetree"] = {
+  adapter = function()
+    return nil -- installed, but setup() never ran
+  end,
+}
+n = names(pmouse.menu_items(picker, "list", list_win))
+check("filetree without adapter: no 'Reveal in filetree'", n["Reveal in filetree"] == nil)
+
+local revealed = {}
+local reveal_result = true
+package.loaded["filetree"] = {
+  adapter = function()
+    return {
+      open_reveal = function(path)
+        revealed[#revealed + 1] = path
+        if reveal_result == "error" then error("boom") end
+        return reveal_result
+      end,
+    }
+  end,
+}
+local closed_before = closed
+local reveal_item = find_item(pmouse.menu_items(picker, "list", list_win), "Reveal in filetree")
+check("with filetree: list menu offers 'Reveal in filetree'", reveal_item ~= nil)
+vim.api.nvim_set_current_win(preview_win)
+check(
+  "with filetree: preview menu offers 'Reveal in filetree'",
+  names(pmouse.menu_items(picker, "preview", preview_win))["Reveal in filetree"]
+)
+vim.api.nvim_set_current_win(main_win)
+if reveal_item then
+  run(reveal_item)
+  vim.wait(500, function()
+    return #revealed > 0
+  end)
+  picker.closed = false
+end
+check(
+  "reveal: filetree gets the row's path",
+  #revealed == 1 and real(revealed[1]) == real(file),
+  vim.inspect(revealed)
+)
+check("reveal: the picker is closed first", closed == closed_before + 1)
+
+local notes = {}
+---@diagnostic disable-next-line: duplicate-set-field
+vim.notify = function(msg)
+  notes[#notes + 1] = msg
+end
+reveal_result = "error"
+reveal_item = find_item(pmouse.menu_items(picker, "list", list_win), "Reveal in filetree")
+if reveal_item then
+  run(reveal_item)
+  vim.wait(500, function()
+    return #notes > 0
+  end)
+  picker.closed = false
+end
+check(
+  "reveal: a filetree error is reported, not raised",
+  notes[1] and notes[1]:find("could not reveal in filetree", 1, true),
+  vim.inspect(notes)
+)
+---@diagnostic disable-next-line: duplicate-set-field
+vim.notify = function() end
+
+saved = picker.current
+picker.current = function()
+  return { text = "no file" }
+end
+n = names(pmouse.menu_items(picker, "list", list_win))
+check("row without a path: no 'Reveal in filetree'", n["Reveal in filetree"] == nil)
+picker.current = function()
+  return { file = dir .. "/missing.txt" }
+end
+n = names(pmouse.menu_items(picker, "list", list_win))
+check("row with a missing path: no 'Reveal in filetree'", n["Reveal in filetree"] == nil)
+picker.current = saved
+package.loaded["filetree"] = nil
+
 -- ── list actions ────────────────────────────────────────────────────────────
 local items = pmouse.menu_items(picker, "list", list_win)
 for _, it in ipairs(items) do

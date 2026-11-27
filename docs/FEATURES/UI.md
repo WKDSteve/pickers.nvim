@@ -68,7 +68,8 @@ With the snacks engine, the preview and the result list react to the mouse:
 - **Right click in the preview or the list** opens a context menu (needs
   `lib.nvim.contextmenu`, which ui.nvim re-exports): open in the current window, split, vsplit or
   tab, open with the system app; copy the selection, the line, the whole file content, the path or
-  `path:line`; with a selected path and gopath.nvim installed, jump to that path; and for the whole
+  `path:line`; with a selected path and gopath.nvim installed, jump to that path; with filetree.nvim
+  installed, reveal the row's file in its tree ("Reveal in filetree"); and for the whole
   list copy all entries, send them to the quickfix list or open them in a new buffer.
 
 The maps are buffer-local and exist only while the picker window is current. telescope and
