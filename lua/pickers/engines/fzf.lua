@@ -621,4 +621,22 @@ function M.pick_dir(opts)
   })
 end
 
+-- fzf-lua asks for `fzf --version` synchronously when a picker opens. When fzf-lua is loaded by this very
+-- picker, the asynchronous lookup (pickers.engines.fzf_version) has only just started, so the open is
+-- deferred until it is done instead of blocking the editor on fzf-lua's own call.
+for _, name in ipairs({ "pick_files", "live_grep", "smart", "pick_item", "pick_dir" }) do
+  local open = M[name]
+  M[name] = function(opts, ...)
+    local args, n = { ... }, select("#", ...)
+    local ok, fv = pcall(require, "pickers.engines.fzf_version")
+    if ok and pcall(require, "fzf-lua") and fv.install() and not fv.ready() then
+      fv.when_ready(function()
+        open(opts, unpack(args, 1, n))
+      end)
+      return
+    end
+    return open(opts, ...)
+  end
+end
+
 return M

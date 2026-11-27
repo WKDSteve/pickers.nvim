@@ -22,6 +22,17 @@ local cache = {}
 ---@type table<string, boolean>
 local running = {}
 local installed = false
+---@type (fun())[]
+local waiters = {}
+local WAIT_MS = 2000
+
+local function flush()
+  local list = waiters
+  waiters = {}
+  for _, cb in ipairs(list) do
+    pcall(cb)
+  end
+end
 
 ---@param bin string
 ---@param parse fun(out: string): table|nil
@@ -39,9 +50,39 @@ local function lookup(bin, parse)
       local out = (res.stderr or "") .. (res.stdout or "")
       local parsed = res.code == 0 and parse(out) or nil
       if parsed then cache[bin] = { parsed = parsed, rc = res.code, out = out } end
+      flush()
     end)
   end)
   if not ok then running[bin] = nil end
+end
+
+---Is it safe to open an fzf-lua picker without fzf-lua asking for the version synchronously?
+---True once the answer is cached, and when no lookup is running (no `fzf`, a failed lookup,
+---the wrapper not installed): then there is nothing to wait for.
+---@param bin string|nil
+---@return boolean
+function M.ready(bin)
+  bin = bin or "fzf"
+  return not installed or cache[bin] ~= nil or not running[bin]
+end
+
+---Run `cb` once the `fzf --version` lookup is done, without blocking the editor: at once when
+---`ready()`, else when the lookup finishes, and at the latest after WAIT_MS (a hung `fzf` must
+---not keep the picker from opening; fzf-lua then asks itself, as before).
+---@param cb fun()
+---@param bin string|nil
+function M.when_ready(cb, bin)
+  if M.ready(bin) then return cb() end
+  local done = false
+  local function once()
+    if done then return end
+    done = true
+    cb()
+  end
+  table.insert(waiters, once)
+  vim.defer_fn(function()
+    if not done then once() end
+  end, WAIT_MS)
 end
 
 ---Wrap `fzf-lua.utils.fzf_version` and start the asynchronous lookup.
@@ -68,7 +109,7 @@ end
 
 ---@internal  for the spec
 function M._reset()
-  cache, running = {}, {}
+  cache, running, waiters = {}, {}, {}
 end
 
 ---@internal  for the spec

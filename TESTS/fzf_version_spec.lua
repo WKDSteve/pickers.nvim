@@ -60,6 +60,32 @@ check(
   utils.fzf_version({ fzf_bin = bin })[2] == 99
 )
 
+-- First picker after fzf-lua loads: the lookup is still running, the open waits for it without blocking
+-- and without fzf-lua's synchronous call (task pickers.nvim/fzf-version-der-erste-fzf-lua-picker-...).
+fv._reset()
+local starter = sync_calls
+utils.fzf_version({ fzf_bin = bin }) -- starts the lookup, falls through once
+local base = sync_calls
+check("a running lookup is not ready", fv.ready(bin) == false and base == starter + 1)
+local fired = false
+fv.when_ready(function()
+  fired = true
+end, bin)
+check("when_ready does not run the callback at once", fired == false)
+vim.wait(10000, function()
+  return fired
+end, 20)
+check("when_ready runs it when the lookup is done", fired and fv._cached(bin) ~= nil)
+check("waiting made no synchronous fzf-lua call", sync_calls == base)
+utils.fzf_version({ fzf_bin = bin })
+check("and the open that follows asks nobody", sync_calls == base and fv.ready(bin))
+local now = false
+fv.when_ready(function()
+  now = true
+end, bin)
+check("a ready lookup runs the callback at once", now)
+check("no lookup, nothing to wait for", fv.ready("no-such-fzf-binary"))
+
 package.loaded["fzf-lua.utils"] = { fzf_version = function() end }
 check(
   "a fzf-lua that looks different is left alone",
