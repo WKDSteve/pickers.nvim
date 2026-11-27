@@ -6265,6 +6265,12 @@ do
   check("snacks.pick_files: query -> pattern", seen.files.pattern == "foo")
   check("snacks.live_grep: query -> search", seen.grep.search == "bar")
   check("snacks.smart: query -> search", seen.pick.search == "baz")
+  -- Not snacks' own `smart` source (frecency by sqlite, the preview of several sources): its own name and the
+  -- inherited behaviour switched off explicitly.
+  check("snacks.smart: own source name", seen.pick.source == "pickers_smart")
+  check("snacks.smart: no frecency", seen.pick.matcher.frecency == false)
+  check("snacks.smart: not a multi source", seen.pick.multi == false)
+  check("snacks.smart: always a preview", seen.pick.preview ~= nil)
   engine2.pick_files(vim.tbl_extend("force", base, { query = "" }))
   engine2.live_grep(base)
   check(

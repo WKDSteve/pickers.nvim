@@ -5,16 +5,7 @@
 -- What it measures for `testing perf`: the per-keystroke starts of rg and fd (pickers.smart.search, pickers.filegrep).
 -- Needs snacks.nvim, rg and fd (or fdfind); the workflow checks snacks out and installs both tools.
 local SETUP = [[dofile(vim.fn.getcwd() .. "/TESTS/sheets/_helpers.lua")
-  -- The smart picker opens snacks with `source = "smart"` and so inherits snacks' own smart source, frecency
-  -- included: on Windows without sqlite3.dll in the (fresh) cache that downloads it from the network, and without
-  -- the image integration its preview is the one of snacks' several sources, which raises on these rows. Both
-  -- off here; task pickers.nvim/snacks-smart-erbt-frecency-und-vorschau-der-snacks-quelle-sm.
-  require("snacks").setup({
-    picker = {
-      enabled = true,
-      sources = { smart = { matcher = { frecency = false }, preview = "file" } },
-    },
-  })
+  require("snacks").setup({ picker = { enabled = true } })
   require("pickers").setup({ engine = "snacks" })
   _G.proj = vim.fs.normalize(vim.fn.tempname())
   local files = {

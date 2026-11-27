@@ -237,13 +237,16 @@ function M.smart(opts)
   })
 
   safe_call(Picker.pick, {
-    source = "smart",
+    -- Not snacks' own `smart` source: it would bring its frecency (a sqlite database, on Windows a synchronous
+    -- download of sqlite3.dll) and the preview of its several sources, which raises on rows without `source_id`.
+    source = "pickers_smart",
     title = titled(opts.prompt or "Smart> "),
     live = true,
     search = initial_text(opts.query),
     format = "file",
-    preview = preview_fn(),
-    matcher = { sort_empty = false },
+    preview = preview_fn() or "file",
+    multi = false,
+    matcher = { sort_empty = false, frecency = false },
     finder = function(_, ctx)
       local search = ctx.filter.search or ""
       ---@async
