@@ -101,7 +101,8 @@ function _G.screen_pos(text, win)
     if at then
       local bytes = 0
       for i, cell in ipairs(cells) do
-        if bytes + 1 >= at then return row - 1, left + i - 2 end
+        -- the right half of a double-width character is an empty cell: never the start of `text`
+        if cell ~= "" and bytes + 1 >= at then return row - 1, left + i - 2 end
         bytes = bytes + #cell
       end
     end
