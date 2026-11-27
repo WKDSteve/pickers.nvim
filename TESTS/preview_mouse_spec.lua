@@ -72,11 +72,22 @@ local list_win = vim.api.nvim_open_win(list_buf, false, {
   height = 4,
 })
 
+local input_buf = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_set_option_value("filetype", "snacks_picker_input", { buf = input_buf })
+local input_win = vim.api.nvim_open_win(input_buf, false, {
+  relative = "editor",
+  row = 14,
+  col = 1,
+  width = 20,
+  height = 1,
+})
+
 local closed = 0
 local picker = {
   closed = false,
   preview = { win = { win = preview_win }, item = { file = file } },
   list = { win = { win = list_win } },
+  input = { win = { win = input_win } },
   close = function(self)
     closed = closed + 1
     self.closed = true
@@ -96,9 +107,9 @@ _G.Snacks = { picker = {
 
 local pmouse = require("pickers.preview_mouse")
 
-local function maparg(buf, lhs)
+local function maparg(buf, lhs, mode)
   return vim.api.nvim_buf_call(buf, function()
-    return vim.fn.maparg(lhs, "n", false, true)
+    return vim.fn.maparg(lhs, mode or "n", false, true)
   end)
 end
 
@@ -121,6 +132,21 @@ vim.api.nvim_set_current_win(list_win)
 check("enter list: right click map set", maparg(list_buf, "<RightMouse>").buffer == 1)
 check("enter list: no double click map", next(maparg(list_buf, "<2-LeftMouse>")) == nil)
 vim.api.nvim_set_current_win(main_win)
+-- the focus sits in the input field while the user points at the list: the right click must be
+-- mapped there too, in insert mode as well (the field is typed into)
+check("find_picker: input window", select(2, pmouse.find_picker(input_win)) == "input")
+vim.api.nvim_set_current_win(input_win)
+check(
+  "enter input: right click map set in insert mode",
+  maparg(input_buf, "<RightMouse>", "i").buffer == 1
+)
+check("enter input: and in normal mode", maparg(input_buf, "<RightMouse>").buffer == 1)
+check("enter input: no double click map", next(maparg(input_buf, "<2-LeftMouse>")) == nil)
+vim.api.nvim_set_current_win(main_win)
+check(
+  "leave input: insert-mode right click map removed",
+  next(maparg(input_buf, "<RightMouse>", "i")) == nil
+)
 
 -- ── double click: confirm, then jump ────────────────────────────────────────
 vim.api.nvim_win_set_cursor(preview_win, { 3, 0 })

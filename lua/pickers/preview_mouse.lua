@@ -40,6 +40,7 @@ function M.find_picker(win)
     if not p.closed then
       if p.preview and p.preview.win and p.preview.win.win == win then return p, "preview" end
       if p.list and p.list.win and p.list.win.win == win then return p, "list" end
+      if p.input and p.input.win and p.input.win.win == win then return p, "input" end
     end
   end
 end
@@ -320,11 +321,14 @@ function M.menu_items(picker, part, win)
   return out
 end
 
----Right click handler for a picker window.
----@param win integer
-local function right_click(win)
+---Right click handler. The click is mapped in every picker window, the input field too: the
+---focus sits there while the user points at the list or the preview, and a mapping is looked up
+---in the buffer that has the focus, not in the one under the pointer. So the window that gets
+---the menu is the one under the mouse.
+local function right_click()
+  local win = vim.fn.getmousepos().winid
   local picker, part = M.find_picker(win)
-  if not picker or not part then return end
+  if not picker or (part ~= "list" and part ~= "preview") then return end
   if part == "list" then
     -- the click does not move the list cursor: select the row under the mouse
     local pos = vim.fn.getmousepos()
@@ -344,13 +348,37 @@ local function right_click(win)
     end
   end
   local items = M.menu_items(picker, part, win)
-  if items and #items > 0 then require("lib.nvim.contextmenu").open(items, { mouse = true }) end
+  if not items or #items == 0 then return end
+  require("lib.nvim.contextmenu").open(items, { mouse = true })
+  M.raise_above(picker)
+end
+
+---Put the window that has the focus (the menu that just opened) above every window of `picker`.
+---The menu opens at its theme's popup level (50), below the floats of a snacks picker (52-55):
+---it took the focus but could not be seen.
+---@param picker table
+function M.raise_above(picker)
+  local cur = vim.api.nvim_get_current_win()
+  local top = 0
+  for _, part in ipairs({ "input", "list", "preview" }) do
+    local w = picker[part] and picker[part].win and picker[part].win.win
+    if w and w ~= cur and vim.api.nvim_win_is_valid(w) then
+      local cfg = vim.api.nvim_win_get_config(w)
+      top = math.max(top, cfg.zindex or 0)
+    end
+  end
+  local cfg = vim.api.nvim_win_get_config(cur)
+  if cfg.relative ~= "" and (cfg.zindex or 0) <= top then
+    pcall(vim.api.nvim_win_set_config, cur, { zindex = top + 10 })
+  end
 end
 
 ---@param buf integer
 local function unmap(buf)
-  for _, lhs in ipairs(mapped[buf] or {}) do
-    pcall(vim.keymap.del, { "n", "v" }, lhs, { buffer = buf })
+  for _, m in ipairs(mapped[buf] or {}) do
+    for _, mode in ipairs(m.modes) do
+      pcall(vim.keymap.del, mode, m.lhs, { buffer = buf })
+    end
   end
   mapped[buf] = nil
 end
@@ -361,6 +389,7 @@ local function bind(win)
   if not picker then return end
   local buf = vim.api.nvim_win_get_buf(win)
   unmap(buf)
+  local maps = {}
   if part == "preview" then
     vim.keymap.set("n", "<2-LeftMouse>", function()
       M.preview_double_click(win)
@@ -369,15 +398,17 @@ local function bind(win)
       silent = true,
       desc = "pickers: jump to the previewed line",
     })
+    maps[#maps + 1] = { lhs = "<2-LeftMouse>", modes = { "n" } }
   end
-  vim.keymap.set({ "n", "v" }, "<RightMouse>", function()
-    right_click(win)
-  end, {
+  -- the input field is in insert mode while the user types
+  local modes = part == "input" and { "n", "i" } or { "n", "v" }
+  vim.keymap.set(modes, "<RightMouse>", right_click, {
     buffer = buf,
     silent = true,
     desc = "pickers: context menu",
   })
-  mapped[buf] = { "<2-LeftMouse>", "<RightMouse>" }
+  maps[#maps + 1] = { lhs = "<RightMouse>", modes = modes }
+  mapped[buf] = maps
 end
 
 ---Register the autocmds (idempotent).
@@ -388,9 +419,17 @@ function M.install()
   local group = vim.api.nvim_create_augroup(augroup, { clear = true })
   vim.api.nvim_create_autocmd("WinEnter", {
     group = group,
-    desc = "pickers: bind mouse maps in a snacks picker preview/list",
+    desc = "pickers: bind mouse maps in a snacks picker's input, list and preview",
     callback = function()
-      if enabled() and (vim.w.snacks_picker_preview or vim.bo.filetype == "snacks_picker_list") then
+      local ft = vim.bo.filetype
+      if
+        enabled()
+        and (
+          vim.w.snacks_picker_preview
+          or ft == "snacks_picker_list"
+          or ft == "snacks_picker_input"
+        )
+      then
         bind(vim.api.nvim_get_current_win())
       end
     end,
