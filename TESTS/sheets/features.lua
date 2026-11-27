@@ -64,4 +64,11 @@ return {
     surface = { "config:keys" },
     docs = "docs/FEATURES/KEYS.md",
   },
+  {
+    id = "pickers.mouse",
+    title = "The mouse in a snacks picker: a right click on a row or the preview opens a context menu, a double click in the preview jumps",
+    surface = { "config:preview_mouse" },
+    docs = "docs/FEATURES/UI.md",
+    perf = "skip:starts no process (buffer-local mouse maps and a menu)",
+  },
 }

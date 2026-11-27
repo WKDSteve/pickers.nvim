@@ -46,6 +46,7 @@ return {
     "TELESCOPE_NVIM_DIR",
     "FZF_LUA_DIR",
     "SNACKS_NVIM_DIR",
+    "UI_NVIM_DIR",
   },
   -- A test sheet is one case that starts a child editor and a real picker (fzf is a process of its own); under load
   -- that takes longer than the default 10 s.
@@ -83,6 +84,16 @@ return {
           repo = "folke/snacks.nvim",
           ref = "882c996cf28183f4d63640de0b4c02ec886d01f2",
           why = "the real snacks picker of the sheet pickers-items-snacks",
+        },
+        {
+          repo = "WKDSteve/ui.nvim",
+          ref = "ci-verified",
+          why = "filetree.nvim needs its ui.kit for the sheet pickers-mouse-snacks",
+        },
+        {
+          repo = "WKDSteve/filetree.nvim",
+          ref = "ci-verified",
+          why = "the real tree of the menu entry Reveal in filetree (sheet pickers-mouse-snacks)",
         },
       },
       packages = {

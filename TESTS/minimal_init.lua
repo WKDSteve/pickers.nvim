@@ -14,16 +14,31 @@
 local this = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p")
 local root = vim.fs.dirname(vim.fs.dirname(vim.fs.normalize(this)))
 
-local DEPS =
-  { "testing.nvim", "lib.nvim", "plenary.nvim", "telescope.nvim", "fzf-lua", "snacks.nvim" }
+local DEPS = {
+  "testing.nvim",
+  "lib.nvim",
+  "plenary.nvim",
+  "telescope.nvim",
+  "fzf-lua",
+  "snacks.nvim",
+  "ui.nvim",
+  "filetree.nvim",
+}
 
 -- The picker libraries are named above so the runner hands them to the child editors as $<NAME>_DIR (`ci commit`
 -- runs in a worktree). They are neither required nor put on the runtimepath of the specs, which stand up their own
 -- doubles: only the test sheets open the real pickers (TESTS/sheets/), and a sheet adds them in its own child
 -- (TESTS/sheets/_helpers.lua reads `vim.g.pickers_sheets_deps`, set below); without one it is a reported skip.
+-- ui.nvim and filetree.nvim are the same kind: the sheet pickers-mouse-snacks reveals a row in the real tree.
 ---@type table<string, true>
-local SHEETS_ONLY =
-  { ["plenary.nvim"] = true, ["telescope.nvim"] = true, ["fzf-lua"] = true, ["snacks.nvim"] = true }
+local SHEETS_ONLY = {
+  ["plenary.nvim"] = true,
+  ["telescope.nvim"] = true,
+  ["fzf-lua"] = true,
+  ["snacks.nvim"] = true,
+  ["ui.nvim"] = true,
+  ["filetree.nvim"] = true,
+}
 
 ---The lazy.nvim directory of the developer's real editor: the `stdpath('data')` of a child editor is a sandbox,
 ---so place 4 below never has a picker library. Only asked for the libraries of the sheets.
@@ -45,6 +60,8 @@ local MARKERS = {
   ["telescope.nvim"] = "lua/telescope",
   ["fzf-lua"] = "lua/fzf-lua",
   ["snacks.nvim"] = "lua/snacks",
+  ["ui.nvim"] = "lua/ui",
+  ["filetree.nvim"] = "lua/filetree",
 }
 
 ---@param name string

@@ -76,6 +76,77 @@ function _G.on_screen(text)
   return _G.screen_text():find(text, 1, true) ~= nil
 end
 
+---Where `text` first appears on the screen, as the 0-based row and column `nvim_input_mouse` takes
+---(grid 0: the whole screen). A cell may hold a multi-byte character (an icon), so the column counts
+---cells, not bytes. With `win`, only the text area of that window is searched (a file name can
+---also stand in the title of another window). nil when it is not there.
+---@param text string
+---@param win? integer
+---@return integer|nil row, integer|nil col
+function _G.screen_pos(text, win)
+  vim.cmd("redraw")
+  local top, left, bottom, right = 1, 1, vim.o.lines, vim.o.columns
+  if win then
+    local pos = vim.fn.win_screenpos(win) -- 1-based row, col of the text area
+    top, left = pos[1], pos[2]
+    bottom = top + vim.api.nvim_win_get_height(win) - 1
+    right = left + vim.api.nvim_win_get_width(win) - 1
+  end
+  for row = top, bottom do
+    local cells = {}
+    for col = left, right do
+      cells[#cells + 1] = vim.fn.screenstring(row, col)
+    end
+    local at = table.concat(cells):find(text, 1, true)
+    if at then
+      local bytes = 0
+      for i, cell in ipairs(cells) do
+        if bytes + 1 >= at then return row - 1, left + i - 2 end
+        bytes = bytes + #cell
+      end
+    end
+  end
+  return nil
+end
+
+---Click with the mouse on the first place the screen shows `text`: `button` "left" or "right",
+---`count` 2 for a double click (two presses on one cell within 'mousetime'). Raises when the
+---text is not on the screen, so the step that clicks names what was missing.
+---@param button "left"|"right"
+---@param text string
+---@param count? integer
+---@param win? integer  search only this window (see `screen_pos`)
+function _G.click(button, text, count, win)
+  local row, col = _G.screen_pos(text, win)
+  if not row then error(("not on the screen: %q"):format(text), 0) end
+  for _ = 1, count or 1 do
+    vim.api.nvim_input_mouse(button, "press", "", 0, row, col)
+    vim.api.nvim_input_mouse(button, "release", "", 0, row, col)
+  end
+end
+
+---A project for the mouse sheet: `beta.txt` and `src/alpha.lua` as the cwd. Sets `_G.proj`.
+function _G.mouse_project()
+  _G.proj = vim.fs.normalize(vim.fn.tempname())
+  vim.fn.mkdir(_G.proj .. "/src", "p")
+  vim.fn.writefile({ "local alpha = 1", "return alpha" }, _G.proj .. "/src/alpha.lua")
+  vim.fn.writefile({ "beta line one", "beta line two", "beta line three" }, _G.proj .. "/beta.txt")
+  vim.cmd.cd(_G.proj)
+end
+
+---The line under the cursor of the filetree window, or nil when no tree is shown.
+---@return string|nil
+function _G.tree_cursor_line()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.bo[buf].filetype == "filetree" then
+      local row = vim.api.nvim_win_get_cursor(win)[1]
+      return vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1]
+    end
+  end
+  return nil
+end
+
 ---A project of three files as the cwd, for the smart/filegrep sheets: `needlek2_file.lua` (found by its name),
 ---`plain.md` holding `quokka2` (found by its content) and `haystack.txt` (found by neither). Sets `_G.proj`.
 function _G.smart_project()

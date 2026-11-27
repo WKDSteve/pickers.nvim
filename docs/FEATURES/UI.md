@@ -72,8 +72,12 @@ With the snacks engine, the preview and the result list react to the mouse:
   installed, reveal the row's file in its tree ("Reveal in filetree"); and for the whole
   list copy all entries, send them to the quickfix list or open them in a new buffer.
 
-The maps are buffer-local and exist only while the picker window is current. telescope and
-fzf-lua are not covered (their previews are not real windows to bind to).
+The right click works while you are still typing in the input field: the menu is for the row or
+preview line under the pointer, and it opens above the picker's own windows. The maps are
+buffer-local and exist only while a picker window is current. telescope and fzf-lua are not
+covered (their previews are not real windows to bind to).
 
 - **Module:** [`preview_mouse.lua`](../../lua/pickers/preview_mouse.lua)
 - **Config:** `preview_mouse` (default `true`)
+- **Sheet:** [`pickers-mouse-snacks`](../../TESTS/sheets/pickers-mouse-snacks.sheet.lua) clicks
+  with the mouse on the real snacks picker and the real filetree.nvim
