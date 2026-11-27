@@ -355,6 +355,37 @@ check(
   copied
 )
 
+-- ── the menu shows above the picker ─────────────────────────────────────────
+-- the picker's floats get a zindex above the menu's popup level, as snacks' do
+for _, w in ipairs({ preview_win, list_win, input_win }) do
+  vim.api.nvim_win_set_config(w, { zindex = 55 })
+end
+local menu_buf = vim.api.nvim_create_buf(false, true)
+local menu_win = vim.api.nvim_open_win(menu_buf, true, {
+  relative = "editor",
+  row = 2,
+  col = 2,
+  width = 10,
+  height = 2,
+  zindex = 50,
+})
+pmouse.raise_above(picker)
+check(
+  "raise_above: the menu that took the focus goes above the picker",
+  vim.api.nvim_win_get_config(menu_win).zindex > 55,
+  vim.api.nvim_win_get_config(menu_win).zindex
+)
+vim.api.nvim_win_close(menu_win, true)
+-- a renderer that leaves the focus in the picker (nvzone/menu): the picker window stays as it was
+vim.api.nvim_set_current_win(input_win)
+pmouse.raise_above(picker)
+check(
+  "raise_above: a picker window with the focus is not raised",
+  vim.api.nvim_win_get_config(input_win).zindex == 55,
+  vim.api.nvim_win_get_config(input_win).zindex
+)
+vim.api.nvim_set_current_win(main_win)
+
 _G.Snacks = nil
 check("without snacks: find_picker is nil", pmouse.find_picker(preview_win) == nil)
 

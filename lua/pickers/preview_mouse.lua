@@ -362,7 +362,9 @@ function M.raise_above(picker)
   local top = 0
   for _, part in ipairs({ "input", "list", "preview" }) do
     local w = picker[part] and picker[part].win and picker[part].win.win
-    if w and w ~= cur and vim.api.nvim_win_is_valid(w) then
+    -- a renderer that leaves the focus where it was (nvzone/menu): nothing of ours to raise
+    if w == cur then return end
+    if w and vim.api.nvim_win_is_valid(w) then
       local cfg = vim.api.nvim_win_get_config(w)
       top = math.max(top, cfg.zindex or 0)
     end
