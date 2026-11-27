@@ -68,6 +68,10 @@ local starter = sync_calls
 utils.fzf_version({ fzf_bin = bin }) -- starts the lookup, falls through once
 local base = sync_calls
 check("a running lookup is not ready", fv.ready(bin) == false and base == starter + 1)
+-- Another program's lookup finishing must not release a waiter of this one.
+if vim.fn.executable("nvim") == 1 and vim.fn.exepath("nvim") ~= bin then
+  utils.fzf_version({ fzf_bin = "nvim" })
+end
 local fired = false
 fv.when_ready(function()
   fired = true

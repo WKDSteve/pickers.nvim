@@ -22,14 +22,15 @@ local cache = {}
 ---@type table<string, boolean>
 local running = {}
 local installed = false
----@type (fun())[]
+---@type table<string, (fun())[]>
 local waiters = {}
 local wait_ms = 2000
 
-local function flush()
-  local list = waiters
-  waiters = {}
-  for _, cb in ipairs(list) do
+---@param bin string
+local function flush(bin)
+  local list = waiters[bin]
+  waiters[bin] = nil
+  for _, cb in ipairs(list or {}) do
     pcall(cb)
   end
 end
@@ -50,7 +51,7 @@ local function lookup(bin, parse)
       local out = (res.stderr or "") .. (res.stdout or "")
       local parsed = res.code == 0 and parse(out) or nil
       if parsed then cache[bin] = { parsed = parsed, rc = res.code, out = out } end
-      flush()
+      flush(bin)
     end)
   end)
   if not ok then running[bin] = nil end
@@ -79,7 +80,9 @@ function M.when_ready(cb, bin)
     done = true
     cb()
   end
-  table.insert(waiters, once)
+  bin = bin or "fzf"
+  waiters[bin] = waiters[bin] or {}
+  table.insert(waiters[bin], once)
   vim.defer_fn(function()
     if not done then once() end
   end, wait_ms)
