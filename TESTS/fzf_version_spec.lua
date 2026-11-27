@@ -120,6 +120,56 @@ do
     notified
   )
 end
+-- A hung `fzf` must not keep the picker from opening: after `wait_ms` the callback runs, once,
+-- even though the lookup never answered; when the hung program finally ends, it does not run again.
+-- The stand-in for the hung program is nvim itself, started asleep instead of with `--version`.
+do
+  fv._reset()
+  fv._set_wait_ms(200)
+  local real_system = vim.system
+  local hung
+  ---@diagnostic disable-next-line: duplicate-set-field
+  vim.system = function(cmd, opts, on_exit)
+    if cmd[1] == bin and cmd[2] == "--version" then
+      hung = real_system(
+        { bin, "--headless", "-n", "-i", "NONE", "-u", "NONE", "--cmd", "sleep 60" },
+        {},
+        on_exit
+      )
+      return hung
+    end
+    return real_system(cmd, opts, on_exit)
+  end
+  utils.fzf_version({ fzf_bin = bin }) -- starts the lookup, which hangs
+  vim.system = real_system
+  check("a hung lookup is running and not ready", hung ~= nil and fv.ready(bin) == false)
+
+  local runs = 0
+  fv.when_ready(function()
+    runs = runs + 1
+  end, bin)
+  check("a hung lookup: the callback does not run at once", runs == 0)
+  vim.wait(10000, function()
+    return runs > 0
+  end, 20)
+  check(
+    "a hung lookup: the cap runs the callback without an answer",
+    runs == 1 and fv._cached(bin) == nil,
+    ("runs=%d cached=%s"):format(runs, tostring(fv._cached(bin) ~= nil))
+  )
+  vim.wait(300)
+  check("a hung lookup: the cap runs it once", runs == 1, runs)
+
+  -- the hung program ends at last: its waiters are flushed, the callback must not run twice
+  if hung then pcall(hung.kill, hung, 9) end
+  local ended = vim.wait(10000, function()
+    return fv.ready(bin)
+  end, 20)
+  check("the hung program ended", ended)
+  check("its late end does not run the callback again", runs == 1, runs)
+  fv._set_wait_ms(2000)
+end
+
 check("no lookup, nothing to wait for", fv.ready("no-such-fzf-binary"))
 
 package.loaded["fzf-lua.utils"] = { fzf_version = function() end }
