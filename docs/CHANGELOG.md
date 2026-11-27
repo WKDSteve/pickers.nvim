@@ -10,6 +10,8 @@ a changelog.
 
 ---
 
+[x] **Context menu: mdview, gitsuite blame, Markdown link.** The right-click menu of the snacks preview and result list gains "Preview in mdview" (a Markdown row, with mdview.nvim: the file is loaded unlisted and `mdview.open()` runs in it, the picker closes first), "Blame this line (gitsuite)" (a row with a line, with gitsuite.nvim: `gitsuite.features.blame.for_location`, shown as a notification) and "Copy Markdown link" (`[name](target)` as `entry_actions.link_insert` builds it). Soft coupling as for filetree: hidden without the plugin, errors reported, not raised. A git log of the file was left out: gitsuite has no per-path log, only the history of the current buffer. `TESTS/preview_mouse_spec.lua`.
+
 [x] **Context menu: "Reveal in filetree".** The right-click menu of the snacks preview and result list shows the file of the row in filetree.nvim (`require("filetree").adapter().open_reveal(path)`), closing the picker first. Soft coupling: the entry is hidden without filetree.nvim (or before its setup) and for rows without an existing path; a filetree error is reported, not raised. `TESTS/preview_mouse_spec.lua`.
 
 [x] **Mouse in the preview and the result list (snacks).** A double click in the preview asks whether to jump and then opens the file in a new buffer on the clicked line; a right click in the preview or the list opens a context menu (open in split/vsplit/tab, copy selection/line/file/path, go to a selected path via gopath.nvim, copy/quickfix/buffer for the whole list). Module `pickers.preview_mouse`, option `preview_mouse`. `TESTS/preview_mouse_spec.lua`.

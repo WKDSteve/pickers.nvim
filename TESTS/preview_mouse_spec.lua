@@ -336,6 +336,149 @@ check("row with a missing path: no 'Reveal in filetree'", n["Reveal in filetree"
 picker.current = saved
 package.loaded["filetree"] = nil
 
+-- ── "Preview in mdview": only with mdview.nvim and only on a Markdown file ───
+local md = dir .. "/notes.md"
+vim.fn.writefile({ "# Notes" }, md)
+local md_row = function()
+  return { file = md, pos = { 1, 0 } }
+end
+saved = picker.current
+picker.current = md_row
+package.loaded["mdview"] = nil
+package.preload["mdview"] = function()
+  error("mdview.nvim is not installed")
+end
+n = names(pmouse.menu_items(picker, "list", list_win))
+check("without mdview: no 'Preview in mdview'", n["Preview in mdview"] == nil)
+package.preload["mdview"] = nil
+
+local previewed = {}
+package.loaded["mdview"] = {
+  open = function()
+    previewed[#previewed + 1] = vim.api.nvim_buf_get_name(0)
+  end,
+}
+picker.current = saved
+n = names(pmouse.menu_items(picker, "list", list_win))
+check("with mdview, a .txt row: no 'Preview in mdview'", n["Preview in mdview"] == nil)
+picker.current = md_row
+closed_before = closed
+local md_item = find_item(pmouse.menu_items(picker, "list", list_win), "Preview in mdview")
+check("with mdview, a .md row: 'Preview in mdview' offered", md_item ~= nil)
+if md_item then
+  run(md_item)
+  vim.wait(500, function()
+    return #previewed > 0
+  end)
+  picker.closed = false
+end
+check(
+  "mdview: opened with the Markdown file as the current buffer",
+  #previewed == 1 and real(previewed[1]) == real(md),
+  vim.inspect(previewed)
+)
+check("mdview: the picker is closed first", closed == closed_before + 1)
+check("mdview: the file stays unlisted", vim.fn.buflisted(vim.fn.bufnr(md)) == 0)
+picker.current = saved
+package.loaded["mdview"] = nil
+
+-- ── "Blame this line (gitsuite)": gitsuite's blame of the row's file and line ──
+package.loaded["gitsuite.features.blame"] = nil
+package.preload["gitsuite.features.blame"] = function()
+  error("gitsuite.nvim is not installed")
+end
+n = names(pmouse.menu_items(picker, "list", list_win))
+check("without gitsuite: no 'Blame this line (gitsuite)'", n["Blame this line (gitsuite)"] == nil)
+package.preload["gitsuite.features.blame"] = nil
+
+local blamed = {}
+local blame_answer = {
+  sha = "0123456789abcdef0123456789abcdef01234567",
+  author = "Ada",
+  author_time = 0,
+  summary = "first cut",
+}
+package.loaded["gitsuite.features.blame"] = {
+  for_location = function(bdir, bpath, lnum, cb)
+    blamed[#blamed + 1] = { dir = bdir, path = bpath, lnum = lnum }
+    if blame_answer == "error" then
+      cb(nil, "not a git repository")
+    else
+      cb(blame_answer, nil)
+    end
+    return { stop = function() end }
+  end,
+}
+notes = {}
+---@diagnostic disable-next-line: duplicate-set-field
+vim.notify = function(msg)
+  notes[#notes + 1] = msg
+end
+local blame_item =
+  find_item(pmouse.menu_items(picker, "list", list_win), "Blame this line (gitsuite)")
+check("with gitsuite: 'Blame this line (gitsuite)' offered", blame_item ~= nil)
+if blame_item then
+  run(blame_item)
+  vim.wait(500, function()
+    return #notes > 0
+  end)
+end
+check(
+  "blame: gitsuite gets the row's directory, file name and line",
+  #blamed == 1
+    and real(blamed[1].dir) == real(dir)
+    and blamed[1].path == "target.txt"
+    and blamed[1].lnum == 3,
+  vim.inspect(blamed)
+)
+check(
+  "blame: the answer is shown with short sha, author and summary",
+  notes[1]
+    and notes[1]:find("target.txt:3", 1, true)
+    and notes[1]:find("01234567 ", 1, true)
+    and notes[1]:find("Ada", 1, true)
+    and notes[1]:find("first cut", 1, true),
+  vim.inspect(notes)
+)
+notes = {}
+blame_answer = "error"
+if blame_item then
+  run(blame_item)
+  vim.wait(500, function()
+    return #notes > 0
+  end)
+end
+check(
+  "blame: a git error is reported, not raised",
+  notes[1] and notes[1]:find("not a git repository", 1, true),
+  vim.inspect(notes)
+)
+check(
+  "format_blame: an all-zero sha is uncommitted",
+  pmouse.format_blame({ sha = string.rep("0", 40) }) == "uncommitted"
+)
+picker.current = function()
+  return { file = file }
+end
+n = names(pmouse.menu_items(picker, "list", list_win))
+check("row without a line: no blame entry", n["Blame this line (gitsuite)"] == nil)
+picker.current = saved
+package.loaded["gitsuite.features.blame"] = nil
+---@diagnostic disable-next-line: duplicate-set-field
+vim.notify = function() end
+
+-- ── "Copy Markdown link": [name](target) of the row's file ──────────────────
+local link_item = find_item(pmouse.menu_items(picker, "list", list_win), "Copy Markdown link")
+check("'Copy Markdown link' offered for a row with a file", link_item ~= nil)
+vim.fn.setreg('"', "")
+if link_item then run(link_item) end
+local link = vim.fn.getreg('"')
+check(
+  "copy Markdown link: one [name](target) link to the file",
+  link:match("^%[[^%]]+%]%([^%)]*target%.txt%)$") ~= nil,
+  link
+)
+
 -- ── list actions ────────────────────────────────────────────────────────────
 local items = pmouse.menu_items(picker, "list", list_win)
 for _, it in ipairs(items) do

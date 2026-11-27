@@ -212,6 +212,62 @@ function M.filetree_reveal()
   end
 end
 
+---Whether `path` names a Markdown file (by its extension).
+---@param path string|nil
+---@return boolean
+function M.is_markdown(path)
+  if not path then return false end
+  local ext = (path:match("%.([%w]+)$") or ""):lower()
+  return ext == "md" or ext == "markdown" or ext == "mdx"
+end
+
+---A function that shows a Markdown file in mdview.nvim's browser preview, or nil when mdview is
+---not installed. A soft dependency, the same way filetree's `mdview_open` uses it: mdview previews
+---the current buffer, so the file is loaded (unlisted if it was not open) and mdview runs in it.
+---@return (fun(path: string))|nil
+function M.mdview_open()
+  local ok, mdview = pcall(require, "mdview")
+  if not ok or type(mdview) ~= "table" or type(mdview.open) ~= "function" then return nil end
+  return function(path)
+    local existed = vim.fn.bufexists(path) == 1
+    local buf = vim.fn.bufadd(path)
+    vim.fn.bufload(buf)
+    if not existed then vim.api.nvim_set_option_value("buflisted", false, { buf = buf }) end
+    vim.api.nvim_buf_call(buf, function()
+      mdview.open()
+    end)
+  end
+end
+
+---gitsuite.nvim's blame of one line of a file without a buffer
+---(`gitsuite.features.blame.for_location`), or nil when gitsuite is not installed.
+---@return (fun(dir: string|nil, path: string, lnum: integer, cb: fun(entry: table|nil, err: string|nil)))|nil
+function M.gitsuite_blame()
+  local ok, blame = pcall(require, "gitsuite.features.blame")
+  if not ok or type(blame) ~= "table" or type(blame.for_location) ~= "function" then return nil end
+  return blame.for_location
+end
+
+---One line for a blame entry: short sha, date, author, summary; "uncommitted" for an all-zero sha.
+---@param entry table  # Lib.Git.BlameEntry
+---@return string
+function M.format_blame(entry)
+  if type(entry.sha) ~= "string" or entry.sha:match("^0+$") then return "uncommitted" end
+  local date = entry.author_time and os.date("%Y-%m-%d", entry.author_time) or "?"
+  return ("%s %s %s %s"):format(entry.sha:sub(1, 8), date, entry.author or "?", entry.summary or "")
+end
+
+---The buffer a copied Markdown link is meant for: the window behind the picker, else the current one.
+---@param picker table
+---@return integer
+local function link_buffer(picker)
+  local win = picker.main
+  if type(win) == "number" and vim.api.nvim_win_is_valid(win) then
+    return vim.api.nvim_win_get_buf(win)
+  end
+  return vim.api.nvim_get_current_buf()
+end
+
 ---The menu items for a click on `part` of `picker`. nil when contextmenu is unavailable.
 ---@param picker table
 ---@param part "preview"|"list"
@@ -250,6 +306,8 @@ function M.menu_items(picker, part, win)
   end
 
   local reveal = file ~= nil and vim.uv.fs_stat(file) ~= nil and M.filetree_reveal() or nil
+  local mdview = readable and M.is_markdown(file) and M.mdview_open() or nil
+  local blame = readable and line ~= nil and M.gitsuite_blame() or nil
 
   local out = {}
   cm.group(
@@ -282,6 +340,40 @@ function M.menu_items(picker, part, win)
           )
         end
       end)
+    end),
+    cm.entry(mdview ~= nil, "Preview in mdview", function()
+      after_close(picker, function()
+        local okm, err = pcall(mdview, file)
+        if not okm then
+          vim.notify(
+            ("could not preview in mdview: %s (%s)"):format(file, tostring(err)),
+            vim.log.levels.WARN,
+            { title = "pickers" }
+          )
+        end
+      end)
+    end)
+  )
+  cm.group(
+    out,
+    cm.heading("Git"),
+    cm.entry(blame ~= nil, "Blame this line (gitsuite)", function()
+      local dir, name, lnum = vim.fs.dirname(file), vim.fs.basename(file), line
+      blame(dir, name, lnum, function(entry, err)
+        vim.schedule(function()
+          if err then
+            vim.notify("blame: " .. err, vim.log.levels.WARN, { title = "pickers" })
+          elseif not entry then
+            vim.notify("blame: no data for this line", vim.log.levels.INFO, { title = "pickers" })
+          else
+            vim.notify(
+              ("%s:%d  %s"):format(name, lnum, M.format_blame(entry)),
+              vim.log.levels.INFO,
+              { title = "pickers" }
+            )
+          end
+        end)
+      end)
     end)
   )
   cm.group(
@@ -295,6 +387,11 @@ function M.menu_items(picker, part, win)
     end),
     cm.entry(file ~= nil and line ~= nil, "Copy path:line", function()
       copy(("%s:%d"):format(file, line))
+    end),
+    cm.entry(file ~= nil, "Copy Markdown link", function()
+      local links =
+        require("pickers.entry_actions.link_insert").build({ file }, link_buffer(picker))
+      copy(table.concat(links, "\n"))
     end),
     cm.entry(part == "preview", "Copy this line", function()
       local row = vim.api.nvim_win_get_cursor(win)[1]

@@ -67,9 +67,13 @@ With the snacks engine, the preview and the result list react to the mouse:
   file opens in a new buffer on the clicked line.
 - **Right click in the preview or the list** opens a context menu (needs
   `lib.nvim.contextmenu`, which ui.nvim re-exports): open in the current window, split, vsplit or
-  tab, open with the system app; copy the selection, the line, the whole file content, the path or
-  `path:line`; with a selected path and gopath.nvim installed, jump to that path; with filetree.nvim
-  installed, reveal the row's file in its tree ("Reveal in filetree"); and for the whole
+  tab, open with the system app; copy the selection, the line, the whole file content, the path,
+  `path:line` or a Markdown link `[name](path)` (built like the insert-link action, for the window
+  behind the picker); with a selected path and gopath.nvim installed, jump to that path; with
+  filetree.nvim installed, reveal the row's file in its tree ("Reveal in filetree"); with
+  mdview.nvim installed and a Markdown row, open it in mdview's browser preview ("Preview in
+  mdview"); with gitsuite.nvim installed and a row that has a line, show who last changed that
+  line ("Blame this line (gitsuite)", a notification; the picker stays open); and for the whole
   list copy all entries, send them to the quickfix list or open them in a new buffer.
 
 The right click works while you are still typing in the input field: the menu is for the row or
