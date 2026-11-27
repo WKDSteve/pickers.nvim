@@ -73,10 +73,19 @@ fv.when_ready(function()
   fired = true
 end, bin)
 check("when_ready does not run the callback at once", fired == false)
-vim.wait(10000, function()
+local waited = vim.wait(10000, function()
   return fired
 end, 20)
-check("when_ready runs it when the lookup is done", fired and fv._cached(bin) ~= nil)
+check(
+  "when_ready runs it when the lookup is done",
+  fired and fv._cached(bin) ~= nil,
+  ("waited=%s fired=%s cached=%s ready=%s"):format(
+    tostring(waited),
+    tostring(fired),
+    tostring(fv._cached(bin) ~= nil),
+    tostring(fv.ready(bin))
+  )
+)
 check("waiting made no synchronous fzf-lua call", sync_calls == base)
 utils.fzf_version({ fzf_bin = bin })
 check("and the open that follows asks nobody", sync_calls == base and fv.ready(bin))
