@@ -70,6 +70,16 @@ local function visual_text()
   return text ~= "" and text or nil
 end
 
+---Whether the feature is on (`cfg.preview_mouse`, default true); asked at use time, so a
+---`setup()` after the engine loaded still counts.
+---@return boolean
+local function enabled()
+  local ok, cfg = pcall(function()
+    return require("pickers.config").get()
+  end)
+  return not ok or type(cfg) ~= "table" or cfg.preview_mouse ~= false
+end
+
 ---@param text string
 local function copy(text)
   vim.fn.setreg("+", text)
@@ -109,7 +119,21 @@ local function preview_target(picker, win)
   local file = M.item_path(item)
   if not file then return nil end
   local ok, cur = pcall(vim.api.nvim_win_get_cursor, win)
-  return file, ok and cur[1] or nil
+  if not ok then return file, nil end
+  local row = cur[1]
+  -- The row is the file's line only when the preview shows the file itself; a preview of
+  -- another mode (`pickers.preview_modes` text) has other rows. Compare the line, and fall
+  -- back to the item's own position when it differs. Big files are trusted unchecked.
+  local stat = vim.uv.fs_stat(file)
+  if stat and stat.size <= 2 * 1024 * 1024 then
+    local shown = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), row - 1, row, false)[1]
+    local read = vim.fn.readfile(file, "", row)
+    if shown == nil or read[row] ~= shown then
+      local pos = item and type(item.pos) == "table" and item.pos[1] or nil
+      return file, pos
+    end
+  end
+  return file, row
 end
 
 ---Double click in the preview: confirm, then jump.
@@ -278,6 +302,14 @@ local function right_click(win)
       end) end
     end
   end
+  if part == "preview" and not visual_text() then
+    -- a right click does not move the cursor by itself: put it on the clicked line, so
+    -- "copy this line" and the open-at-line entries mean what was clicked
+    local pos = vim.fn.getmousepos()
+    if pos.winid == win and pos.line > 0 then
+      pcall(vim.api.nvim_win_set_cursor, win, { pos.line, math.max(pos.column - 1, 0) })
+    end
+  end
   local items = M.menu_items(picker, part, win)
   if items and #items > 0 then require("lib.nvim.contextmenu").open(items, { mouse = true }) end
 end
@@ -317,13 +349,15 @@ end
 
 ---Register the autocmds (idempotent).
 function M.install()
-  if not snacks_picker_mod() then return end
+  -- No `Snacks` check here: the engine module can load before snacks has set its global,
+  -- and a check now would leave the feature off for the whole session. `find_picker` and
+  -- `enabled` are asked when a window is entered.
   local group = vim.api.nvim_create_augroup(augroup, { clear = true })
   vim.api.nvim_create_autocmd("WinEnter", {
     group = group,
     desc = "pickers: bind mouse maps in a snacks picker preview/list",
     callback = function()
-      if vim.w.snacks_picker_preview or vim.bo.filetype == "snacks_picker_list" then
+      if enabled() and (vim.w.snacks_picker_preview or vim.bo.filetype == "snacks_picker_list") then
         bind(vim.api.nvim_get_current_win())
       end
     end,

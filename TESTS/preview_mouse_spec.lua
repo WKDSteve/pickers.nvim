@@ -151,6 +151,37 @@ check("double click, answer yes: on the clicked line", vim.api.nvim_win_get_curs
 picker.closed = false
 vim.cmd("enew")
 
+-- ── a preview that is not the file's text: the row is not the file's line ───
+vim.api.nvim_buf_set_lines(preview_buf, 0, -1, false, { "(mode text)", "other", "rows" })
+vim.api.nvim_win_set_cursor(preview_win, { 2, 0 })
+picker.preview.item = { file = file, pos = { 4, 0 } }
+asked = nil
+vim.fn.confirm = function(msg)
+  asked = msg
+  return 2
+end
+pmouse.preview_double_click(preview_win)
+check(
+  "foreign preview text: jumps to the item's own line, not the preview row",
+  asked and asked:find("target.txt:4", 1, true),
+  asked
+)
+vim.api.nvim_buf_set_lines(preview_buf, 0, -1, false, { "one", "two", "three", "four" })
+picker.preview.item = { file = file }
+
+-- ── the feature can be switched off, also after the engine loaded ───────────
+vim.api.nvim_set_current_win(preview_win)
+vim.api.nvim_set_current_win(main_win)
+pmouse.install()
+require("pickers.config").apply({ preview_mouse = false })
+vim.api.nvim_set_current_win(preview_win)
+check(
+  "preview_mouse = false: no map on entering the preview",
+  next(maparg(preview_buf, "<RightMouse>")) == nil
+)
+vim.api.nvim_set_current_win(main_win)
+require("pickers.config").reset()
+
 -- ── menu items ──────────────────────────────────────────────────────────────
 local function names(items)
   local out = {}

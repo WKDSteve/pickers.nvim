@@ -37,17 +37,11 @@ local spawn_env = require("lib.nvim.cross.run.env")
 local M = {}
 
 -- Mouse in the preview and the result list (double click jumps, right click opens a
--- context menu). Idempotent; `cfg.preview_mouse = false` switches it off.
-do
-  local ok, cfg = pcall(function()
-    return require("pickers.config").get()
-  end)
-  if not ok or not cfg or cfg.preview_mouse ~= false then
-    pcall(function()
-      require("pickers.preview_mouse").install()
-    end)
-  end
-end
+-- context menu). Idempotent; `cfg.preview_mouse = false` switches it off (asked when a
+-- picker window is entered, not here).
+pcall(function()
+  require("pickers.preview_mouse").install()
+end)
 
 ---@internal
 ---fd's executable name. Debian and Ubuntu ship it as `fdfind` because `fd` is
