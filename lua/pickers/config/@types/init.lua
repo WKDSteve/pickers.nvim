@@ -92,6 +92,7 @@
 ---@field engine?        Pickers.Engine
 ---@field repos_dir?     string|nil
 ---@field deps_popup?    boolean  # lib.nvim.deps "declared tools" popup once, ever, on first setup() after install (default true; needs lib.nvim.deps — a no-op without it)
+---@field preview_mouse? boolean  # snacks engine: double click in the preview jumps to the line, right click opens a context menu in preview and list (default true)
 ---@field collections?   Pickers.Collection[]
 ---@field depth_aliases? table<string, fun():string>
 ---@field find?          Pickers.FindOpts

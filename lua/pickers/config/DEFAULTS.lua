@@ -10,6 +10,11 @@ local M = {
   -- this plugin specifically, right here in the spec passed to setup() —
   -- no vim.g needed. See README.
   deps_popup = true,
+  -- snacks engine: double click in the preview jumps to the line (after a
+  -- confirmation), right click in the preview or the list opens a context menu
+  -- (open in split/tab, copy, gopath, copy/export the list). See
+  -- pickers.preview_mouse. false disables both.
+  preview_mouse = true,
   -- The "insert Markdown link(s)" entry action (keys.markdown_link_insert,
   -- pickers.entry_actions.link_insert): writes the selected entries as
   -- `[name](path)` into the window behind the picker and puts the cursor into

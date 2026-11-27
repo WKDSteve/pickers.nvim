@@ -58,3 +58,21 @@ collections, and the external tools declared in `docs/install.json`. The
 
 - **Module:** [`health.lua`](../../lua/pickers/health.lua)
 - **Usercmds:** `:checkhealth pickers`
+
+## Mouse in the preview and the result list
+
+With the snacks engine, the preview and the result list react to the mouse:
+
+- **Double click in the preview** asks "Jump to file:line?"; on yes the picker closes and the
+  file opens in a new buffer on the clicked line.
+- **Right click in the preview or the list** opens a context menu (needs
+  `lib.nvim.contextmenu`, which ui.nvim re-exports): open in the current window, split, vsplit or
+  tab, open with the system app; copy the selection, the line, the whole file content, the path or
+  `path:line`; with a selected path and gopath.nvim installed, jump to that path; and for the whole
+  list copy all entries, send them to the quickfix list or open them in a new buffer.
+
+The maps are buffer-local and exist only while the picker window is current. telescope and
+fzf-lua are not covered (their previews are not real windows to bind to).
+
+- **Module:** [`preview_mouse.lua`](../../lua/pickers/preview_mouse.lua)
+- **Config:** `preview_mouse` (default `true`)
