@@ -42,6 +42,14 @@ vim.fn.mkdir(dir, "p")
 local file = dir .. "/target.txt"
 vim.fn.writefile({ "one", "two", "three", "four" }, file)
 
+-- macOS reaches the temp dir through a symlink (/var -> /private/var): compare real paths
+local function real(path)
+  return vim.fs.normalize(vim.uv.fs_realpath(path) or path)
+end
+local function current_file()
+  return real(vim.api.nvim_buf_get_name(0))
+end
+
 local main_win = vim.api.nvim_get_current_win()
 local preview_buf = vim.api.nvim_create_buf(false, true)
 vim.api.nvim_buf_set_lines(preview_buf, 0, -1, false, { "one", "two", "three", "four" })
@@ -128,20 +136,17 @@ check(
   asked and asked:find("target.txt:3", 1, true)
 )
 check("double click, answer no: picker stays open", closed == 0)
-check("double click, answer no: no buffer opened", vim.fn.expand("%:p") ~= vim.fs.normalize(file))
+check("double click, answer no: no buffer opened", current_file() ~= real(file))
 
 vim.fn.confirm = function()
   return 1
 end
 pmouse.preview_double_click(preview_win)
 vim.wait(500, function()
-  return vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(file)
+  return current_file() == real(file)
 end)
 check("double click, answer yes: picker closed", closed == 1)
-check(
-  "double click, answer yes: file opened",
-  vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.normalize(file)
-)
+check("double click, answer yes: file opened", current_file() == real(file))
 check("double click, answer yes: on the clicked line", vim.api.nvim_win_get_cursor(0)[1] == 3)
 picker.closed = false
 vim.cmd("enew")
