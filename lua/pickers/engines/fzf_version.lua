@@ -24,7 +24,7 @@ local running = {}
 local installed = false
 ---@type (fun())[]
 local waiters = {}
-local WAIT_MS = 2000
+local wait_ms = 2000
 
 local function flush()
   local list = waiters
@@ -67,7 +67,7 @@ function M.ready(bin)
 end
 
 ---Run `cb` once the `fzf --version` lookup is done, without blocking the editor: at once when
----`ready()`, else when the lookup finishes, and at the latest after WAIT_MS (a hung `fzf` must
+---`ready()`, else when the lookup finishes, and at the latest after `wait_ms` (a hung `fzf` must
 ---not keep the picker from opening; fzf-lua then asks itself, as before).
 ---@param cb fun()
 ---@param bin string|nil
@@ -82,7 +82,7 @@ function M.when_ready(cb, bin)
   table.insert(waiters, once)
   vim.defer_fn(function()
     if not done then once() end
-  end, WAIT_MS)
+  end, wait_ms)
 end
 
 ---Wrap `fzf-lua.utils.fzf_version` and start the asynchronous lookup.
@@ -105,6 +105,12 @@ function M.install()
   end
   lookup("fzf", utils.parse_verstr)
   return true
+end
+
+---@internal  for the spec
+---@param ms integer
+function M._set_wait_ms(ms)
+  wait_ms = ms
 end
 
 ---@internal  for the spec

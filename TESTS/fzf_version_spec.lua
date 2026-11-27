@@ -63,6 +63,7 @@ check(
 -- First picker after fzf-lua loads: the lookup is still running, the open waits for it without blocking
 -- and without fzf-lua's synchronous call (task pickers.nvim/fzf-version-der-erste-fzf-lua-picker-...).
 fv._reset()
+fv._set_wait_ms(60000) -- the cap must not stand in for the lookup on a slow runner
 local starter = sync_calls
 utils.fzf_version({ fzf_bin = bin }) -- starts the lookup, falls through once
 local base = sync_calls
