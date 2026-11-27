@@ -31,7 +31,7 @@ local function flush(bin)
   local list = waiters[bin]
   waiters[bin] = nil
   for _, cb in ipairs(list or {}) do
-    pcall(cb)
+    cb()
   end
 end
 
@@ -78,7 +78,14 @@ function M.when_ready(cb, bin)
   local function once()
     if done then return end
     done = true
-    cb()
+    -- Deferred, so nobody up the stack sees an error: report it instead of dropping it.
+    local ok, err = pcall(cb)
+    if not ok then
+      vim.notify(
+        "pickers.engines.fzf_version: the deferred picker failed to open: " .. tostring(err),
+        vim.log.levels.ERROR
+      )
+    end
   end
   bin = bin or "fzf"
   waiters[bin] = waiters[bin] or {}

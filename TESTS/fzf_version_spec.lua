@@ -99,6 +99,27 @@ fv.when_ready(function()
   now = true
 end, bin)
 check("a ready lookup runs the callback at once", now)
+-- An error in a deferred open is reported, not swallowed.
+do
+  fv._reset()
+  utils.fzf_version({ fzf_bin = bin }) -- lookup running again
+  local notified, notify = nil, vim.notify
+  vim.notify = function(msg)
+    notified = msg
+  end
+  fv.when_ready(function()
+    error("boom")
+  end, bin)
+  vim.wait(10000, function()
+    return notified ~= nil
+  end, 20)
+  vim.notify = notify
+  check(
+    "an error in the deferred open is reported",
+    notified ~= nil and notified:find("boom", 1, true) ~= nil,
+    notified
+  )
+end
 check("no lookup, nothing to wait for", fv.ready("no-such-fzf-binary"))
 
 package.loaded["fzf-lua.utils"] = { fzf_version = function() end }
