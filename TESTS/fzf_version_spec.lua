@@ -72,6 +72,7 @@ check("a running lookup is not ready", fv.ready(bin) == false and base == starte
 if vim.fn.executable("nvim") == 1 and vim.fn.exepath("nvim") ~= bin then
   utils.fzf_version({ fzf_bin = "nvim" })
 end
+base = sync_calls -- the stand-in counts that call too
 local fired = false
 fv.when_ready(function()
   fired = true
