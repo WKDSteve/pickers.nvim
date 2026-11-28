@@ -9216,10 +9216,10 @@ do
   local pdf_calls = 0
   local pdf_draws = true
   package.loaded["pdfport.integrations.telescope"] = {
-    -- pdfport's reading: true = "I drew the text into the buffer"
+    -- telescope's reading, as pdfport answers since pdfport.nvim@2a02841: false = "I drew it"
     filetype_hook = function()
       pdf_calls = pdf_calls + 1
-      return pdf_draws
+      return not pdf_draws
     end,
   }
 

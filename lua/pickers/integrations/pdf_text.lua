@@ -14,8 +14,8 @@
 --- telescope reads the hook's answer as "go on previewing?": `true` lets its own
 --- previewer show the file, `false` stops it (the hook drew the buffer itself, or
 --- the file is not to be shown). So this hook answers `true` for every file that
---- is not a PDF, and `false` for a PDF that pdfport took (pdfport's own hook
---- answers the other way round: `true` = "I drew it"). A `filetype_hook` the host
+--- is not a PDF, and for a PDF passes on pdfport's own answer, which reads the
+--- same way since `pdfport.nvim@2a02841` (`false` = "I drew it"). A `filetype_hook` the host
 --- already set keeps priority: it is called first, and when it answers `false`
 --- the preview stops there.
 ---
@@ -66,8 +66,8 @@ function M.contribute(cfg)
         if type(filepath) ~= "string" or not filepath:lower():match("%.pdf$") then return true end
         local pdf = pdfport()
         if not pdf then return true end
-        -- pdfport answers true when it drew the text into the buffer itself
-        return not pdf.filetype_hook(filepath, bufnr, opts)
+        -- pdfport answers as telescope reads it: false when it drew the text into the buffer itself
+        return pdf.filetype_hook(filepath, bufnr, opts)
       end
 
       return {
