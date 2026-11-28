@@ -23,13 +23,15 @@ local DEPS = {
   "snacks.nvim",
   "ui.nvim",
   "filetree.nvim",
+  "gitsuite.nvim",
 }
 
 -- The picker libraries are named above so the runner hands them to the child editors as $<NAME>_DIR (`ci commit`
 -- runs in a worktree). They are neither required nor put on the runtimepath of the specs, which stand up their own
 -- doubles: only the test sheets open the real pickers (TESTS/sheets/), and a sheet adds them in its own child
 -- (TESTS/sheets/_helpers.lua reads `vim.g.pickers_sheets_deps`, set below); without one it is a reported skip.
--- ui.nvim and filetree.nvim are the same kind: the sheet pickers-mouse-snacks reveals a row in the real tree.
+-- ui.nvim and filetree.nvim are the same kind: the sheet pickers-mouse-snacks reveals a row in the real tree,
+-- gitsuite.nvim too: the sheet pickers-mouse-blame-gitsuite blames a line with the real git.
 ---@type table<string, true>
 local SHEETS_ONLY = {
   ["plenary.nvim"] = true,
@@ -38,6 +40,7 @@ local SHEETS_ONLY = {
   ["snacks.nvim"] = true,
   ["ui.nvim"] = true,
   ["filetree.nvim"] = true,
+  ["gitsuite.nvim"] = true,
 }
 
 ---The lazy.nvim directory of the developer's real editor: the `stdpath('data')` of a child editor is a sandbox,
@@ -62,6 +65,7 @@ local MARKERS = {
   ["snacks.nvim"] = "lua/snacks",
   ["ui.nvim"] = "lua/ui",
   ["filetree.nvim"] = "lua/filetree",
+  ["gitsuite.nvim"] = "lua/gitsuite",
 }
 
 ---@param name string

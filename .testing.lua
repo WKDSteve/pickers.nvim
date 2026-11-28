@@ -47,6 +47,7 @@ return {
     "FZF_LUA_DIR",
     "SNACKS_NVIM_DIR",
     "UI_NVIM_DIR",
+    "GITSUITE_NVIM_DIR",
   },
   -- A test sheet is one case that starts a child editor and a real picker (fzf is a process of its own); under load
   -- that takes longer than the default 10 s.
@@ -94,6 +95,11 @@ return {
           repo = "WKDSteve/filetree.nvim",
           ref = "ci-verified",
           why = "the real tree of the menu entry Reveal in filetree (sheet pickers-mouse-snacks)",
+        },
+        {
+          repo = "WKDSteve/gitsuite.nvim",
+          ref = "ci-verified",
+          why = "the real blame of the menu entry Blame this line (sheet pickers-mouse-blame-gitsuite)",
         },
       },
       packages = {

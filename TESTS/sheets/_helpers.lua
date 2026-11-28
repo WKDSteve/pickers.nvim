@@ -135,6 +135,39 @@ function _G.mouse_project()
   vim.cmd.cd(_G.proj)
 end
 
+---The mouse project as a git repository with one commit of a known author ("Sheet Author", subject "add the
+---files"), plus `gamma.txt`, which is not checked in. Sets `_G.proj` and `_G.sha` (the full sha of the commit).
+---git runs without the global and system profile (an empty GIT_CONFIG_GLOBAL), the identity is passed with `-c`:
+---nothing of the developer's or the runner's git setup reaches the throwaway repository.
+function _G.blame_project()
+  _G.mouse_project()
+  local empty = vim.fs.normalize(vim.fn.tempname())
+  vim.fn.writefile({}, empty)
+  local env = { GIT_CONFIG_GLOBAL = empty, GIT_CONFIG_NOSYSTEM = "1" }
+  local function git(...)
+    local args =
+      { "git", "-c", "user.name=Sheet Author", "-c", "user.email=sheet@example.invalid", ... }
+    local r = vim.system(args, { cwd = _G.proj, text = true, env = env }):wait()
+    if r.code ~= 0 then error(("%s: %s"):format(table.concat(args, " "), r.stderr or ""), 0) end
+    return vim.trim(r.stdout or "")
+  end
+  git("init", "-q")
+  git("add", "beta.txt", "src/alpha.lua")
+  git("commit", "-q", "-m", "add the files")
+  _G.sha = git("rev-parse", "HEAD")
+  vim.fn.writefile({ "gamma line one", "gamma line two" }, _G.proj .. "/gamma.txt")
+end
+
+---The notification so far that contains `text` (plain), or nil.
+---@param text string
+---@return string|nil
+function _G.note_with(text)
+  for _, n in ipairs(_G.notes) do
+    if n:find(text, 1, true) then return n end
+  end
+  return nil
+end
+
 ---The line under the cursor of the filetree window, or nil when no tree is shown.
 ---@return string|nil
 function _G.tree_cursor_line()

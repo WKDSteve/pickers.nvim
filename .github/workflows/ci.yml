@@ -137,6 +137,13 @@ jobs:
           repository: WKDSteve/filetree.nvim
           path: .deps/filetree.nvim
           ref: ci-verified
+      # the real blame of the menu entry Blame this line (sheet pickers-mouse-blame-gitsuite)
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          repository: WKDSteve/gitsuite.nvim
+          path: .deps/gitsuite.nvim
+          ref: ci-verified
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
