@@ -128,6 +128,31 @@ check("enter preview: right click map set", maparg(preview_buf, "<RightMouse>").
 vim.api.nvim_set_current_win(main_win)
 check("leave preview: double click map removed", next(maparg(preview_buf, "<2-LeftMouse>")) == nil)
 check("leave preview: right click map removed", next(maparg(preview_buf, "<RightMouse>")) == nil)
+
+-- a previewed buffer can be a real one (fzf-lua shows loaded buffers): its own maps come back
+vim.keymap.set("n", "<RightMouse>", "<Cmd>let g:user_rmouse = 1<CR>", {
+  buffer = preview_buf,
+  desc = "the user's own right click",
+})
+vim.api.nvim_set_current_win(preview_win)
+check(
+  "a user's buffer map: ours stands in front while the preview is current",
+  maparg(preview_buf, "<RightMouse>").desc == "pickers: context menu"
+)
+vim.api.nvim_set_current_win(main_win)
+local back = maparg(preview_buf, "<RightMouse>")
+check(
+  "a user's buffer map: back after leaving the preview",
+  back.desc == "the user's own right click" and back.rhs == "<Cmd>let g:user_rmouse = 1<CR>",
+  vim.inspect(back)
+)
+vim.api.nvim_set_current_win(preview_win)
+vim.api.nvim_set_current_win(main_win)
+check(
+  "a user's buffer map: still the user's after a second visit",
+  maparg(preview_buf, "<RightMouse>").desc == "the user's own right click"
+)
+vim.keymap.del("n", "<RightMouse>", { buffer = preview_buf })
 vim.api.nvim_set_current_win(list_win)
 check("enter list: right click map set", maparg(list_buf, "<RightMouse>").buffer == 1)
 check("enter list: no double click map", next(maparg(list_buf, "<2-LeftMouse>")) == nil)
@@ -499,34 +524,17 @@ check(
 )
 
 -- ── the menu shows above the picker ─────────────────────────────────────────
--- the picker's floats get a zindex above the menu's popup level, as snacks' do
+-- the picker's floats get a zindex above the theme's menu level, as snacks' do (52-55); the menu
+-- opened from one of them lies above it by itself (lib.nvim.ui.kit.menu), nothing to raise here
 for _, w in ipairs({ preview_win, list_win, input_win }) do
-  vim.api.nvim_win_set_config(w, { zindex = 55 })
+  vim.api.nvim_win_set_config(w, { zindex = 99 })
 end
-local menu_buf = vim.api.nvim_create_buf(false, true)
-local menu_win = vim.api.nvim_open_win(menu_buf, true, {
-  relative = "editor",
-  row = 2,
-  col = 2,
-  width = 10,
-  height = 2,
-  zindex = 50,
-})
-pmouse.raise_above(picker)
-check(
-  "raise_above: the menu that took the focus goes above the picker",
-  vim.api.nvim_win_get_config(menu_win).zindex > 55,
-  vim.api.nvim_win_get_config(menu_win).zindex
-)
-vim.api.nvim_win_close(menu_win, true)
--- a renderer that leaves the focus in the picker (nvzone/menu): the picker window stays as it was
 vim.api.nvim_set_current_win(input_win)
-pmouse.raise_above(picker)
-check(
-  "raise_above: a picker window with the focus is not raised",
-  vim.api.nvim_win_get_config(input_win).zindex == 55,
-  vim.api.nvim_win_get_config(input_win).zindex
-)
+local okm, cm = pcall(require, "lib.nvim.contextmenu")
+local surf = okm and cm.open({ { name = "Copy path", cmd = function() end } }, { mouse = false })
+local menu_z = surf and surf.winid and vim.api.nvim_win_get_config(surf.winid).zindex
+check("the menu opened from a picker float lies above it", menu_z and menu_z > 99, menu_z)
+if surf then surf:close() end
 vim.api.nvim_set_current_win(main_win)
 
 _G.Snacks = nil

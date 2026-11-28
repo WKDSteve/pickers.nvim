@@ -473,29 +473,7 @@ local function right_click()
       end)
     end)
   end
-  M.raise_above(picker)
-end
-
----Put the window that has the focus (the menu that just opened) above every window of `picker`.
----The menu opens at its theme's popup level (50), below the floats of a snacks picker (52-55):
----it took the focus but could not be seen.
----@param picker table
-function M.raise_above(picker)
-  local cur = vim.api.nvim_get_current_win()
-  local top = 0
-  for _, part in ipairs({ "input", "list", "preview" }) do
-    local w = picker[part] and picker[part].win and picker[part].win.win
-    -- a renderer that leaves the focus where it was (nvzone/menu): nothing of ours to raise
-    if w == cur then return end
-    if w and vim.api.nvim_win_is_valid(w) then
-      local cfg = vim.api.nvim_win_get_config(w)
-      top = math.max(top, cfg.zindex or 0)
-    end
-  end
-  local cfg = vim.api.nvim_win_get_config(cur)
-  if cfg.relative ~= "" and (cfg.zindex or 0) <= top then
-    pcall(vim.api.nvim_win_set_config, cur, { zindex = top + 10 })
-  end
+  -- the menu opens above the picker's floats on its own (lib.nvim.ui.kit.menu, lib.nvim@63ebb1d)
 end
 
 ---@param buf integer
@@ -503,9 +481,36 @@ local function unmap(buf)
   for _, m in ipairs(mapped[buf] or {}) do
     for _, mode in ipairs(m.modes) do
       pcall(vim.keymap.del, mode, m.lhs, { buffer = buf })
+      -- a buffer-local map of the user's that ours stood in front of comes back
+      local saved = m.saved and m.saved[mode]
+      if saved and vim.api.nvim_buf_is_valid(buf) then
+        vim.api.nvim_buf_call(buf, function()
+          pcall(vim.fn.mapset, mode, false, saved)
+        end)
+      end
     end
   end
   mapped[buf] = nil
+end
+
+---The buffer-local maps of `lhs` in `buf` that are not ours, per mode: the preview of fzf-lua can
+---show a real, loaded buffer, whose own maps must survive the time the preview is current.
+---@param buf integer
+---@param lhs string
+---@param modes string[]
+---@return table<string, table>|nil
+local function own_maps(buf, lhs, modes)
+  local saved
+  vim.api.nvim_buf_call(buf, function()
+    for _, mode in ipairs(modes) do
+      local m = vim.fn.maparg(lhs, mode, false, true)
+      if m.buffer == 1 and not tostring(m.desc or ""):find("^pickers: ") then
+        saved = saved or {}
+        saved[mode] = m
+      end
+    end
+  end)
+  return saved
 end
 
 ---The part of a picker `win` is for binding: snacks asked directly, the other engines by a cheap
@@ -529,6 +534,7 @@ local function bind(win)
   unmap(buf)
   local maps = {}
   if part == "preview" then
+    local saved = own_maps(buf, "<2-LeftMouse>", { "n" })
     vim.keymap.set("n", "<2-LeftMouse>", function()
       M.preview_double_click(win)
     end, {
@@ -536,16 +542,17 @@ local function bind(win)
       silent = true,
       desc = "pickers: jump to the previewed line",
     })
-    maps[#maps + 1] = { lhs = "<2-LeftMouse>", modes = { "n" } }
+    maps[#maps + 1] = { lhs = "<2-LeftMouse>", modes = { "n" }, saved = saved }
   end
   -- the input field is in insert mode while the user types
   local modes = part == "input" and { "n", "i" } or { "n", "v" }
+  local saved = own_maps(buf, "<RightMouse>", modes)
   vim.keymap.set(modes, "<RightMouse>", right_click, {
     buffer = buf,
     silent = true,
     desc = "pickers: context menu",
   })
-  maps[#maps + 1] = { lhs = "<RightMouse>", modes = modes }
+  maps[#maps + 1] = { lhs = "<RightMouse>", modes = modes, saved = saved }
   mapped[buf] = maps
 end
 
