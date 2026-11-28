@@ -1,7 +1,7 @@
 -- Feature pickers.mouse (TESTS/sheets/features.lua): the menu entry "Blame this line (gitsuite)" on the real snacks
 -- picker and the real gitsuite.nvim, in a real git repository. A right click on a preview line blames that line:
 -- the notification names file:line, the short sha, the author and the subject of the commit; for a file that is
--- not checked in it is an error instead, and nothing throws. The picker stays open.
+-- not checked in it names git's error instead, and nothing throws. The picker stays open.
 -- Needs snacks.nvim and gitsuite.nvim (.deps/, beside this repository, or the lazy.nvim directory of the real
 -- editor) and git on PATH; the workflow checks them out.
 return {
@@ -99,12 +99,13 @@ return {
     {
       expect = [[(function()
         local n = _G.note_with("blame: ")
-        -- lib.nvim's git.blame_porcelain_async does not pass on git's stderr (yet): "git blame failed"
         assert(not n:find("Sheet Author", 1, true), "a blame line for a file not checked in: " .. n)
         assert(_G.note_with("gamma.txt:") == nil, "a blame line for a file not checked in: " .. n)
+        -- git's own reason (lib.nvim@f011fc7), e.g. "fatal: no such path 'gamma.txt' in HEAD"
+        assert(n:find("gamma.txt", 1, true), "the error does not name the file: " .. n)
         return true
       end)()]],
-      note = "it is an error, not a blame line",
+      note = "it is git's error about gamma.txt, not a blame line",
     },
     { expect = [[#Snacks.picker.get() == 1]], note = "nothing threw, the picker is still open" },
   },
