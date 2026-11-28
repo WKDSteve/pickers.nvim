@@ -32,7 +32,10 @@ return {
       lua = [[require("telescope").setup({ defaults = { preview = { timeout = 5000 } } })]],
       note = "telescope set up",
     },
-    { lua = [[require("pickers.preview_mouse").install()]], note = "the mouse maps installed" },
+    {
+      lua = [[assert(select(2, require("pickers.engines").load("telescope")) == "telescope")]],
+      note = "the telescope engine loaded, which installs the mouse maps",
+    },
     {
       lua = [[
         -- the one open telescope picker, found the way preview_mouse finds it

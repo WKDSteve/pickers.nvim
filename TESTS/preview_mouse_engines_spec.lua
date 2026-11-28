@@ -190,8 +190,28 @@ check(
 vim.cmd("enew")
 main_win = vim.api.nvim_get_current_win()
 
--- binding: the prompt gets the right click (insert mode too), no own double click
-pmouse.install()
+-- binding: loading the telescope engine installs the mouse, with no call by hand and without the
+-- snacks engine's module (it used to be the only place that installed it)
+local real_telescope_engine = package.loaded["pickers.engines.telescope"]
+package.loaded["pickers.engines.telescope"] = {
+  available = function()
+    return true
+  end,
+}
+require("pickers.config").reset()
+require("pickers.config").apply({ engine = "telescope" })
+local _, engine_name = require("pickers.engines").load()
+package.loaded["pickers.engines.telescope"] = real_telescope_engine
+check("telescope: engines.load() picks the telescope engine", engine_name == "telescope")
+check(
+  "... without loading the snacks engine's module",
+  package.loaded["pickers.engines.snacks"] == nil
+)
+-- an augroup that was never created is an error to ask for, not an empty list
+local has_group, mouse_aus =
+  pcall(vim.api.nvim_get_autocmds, { group = "pickers_preview_mouse", event = "WinEnter" })
+check("... and the mouse is installed", has_group and #mouse_aus == 1)
+-- the right click on the prompt (insert mode too), no own double click
 vim.api.nvim_set_current_win(prompt_win)
 check(
   "telescope: entering the prompt maps <RightMouse>",

@@ -21,7 +21,7 @@ require("pickers").setup({
   -- deps module. false silences it for pickers.nvim only, right here, without
   -- touching any vim.g. `:Lib deps show pickers.nvim` repeats it on demand.
   deps_popup = true,
-  preview_mouse = true,           -- snacks: double click in the preview jumps, right click opens a context menu
+  preview_mouse = true,           -- every engine: double click in the preview jumps, right click opens a context menu
 
   -- Root directory that contains git repositories. Optional — only needed
   -- for the "repos" scope; nil is fine otherwise. Defaults to $REPOS_DIR via
