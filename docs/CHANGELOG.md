@@ -10,6 +10,8 @@ a changelog.
 
 ---
 
+[x] **Fix: the mouse was set up only by the snacks engine.** `pickers.preview_mouse.install()` ran at the top of `engines/snacks.lua`, and `engines.load()` loads only the chosen engine's module: with `engine = "telescope"` or `"fzf"` the mouse stayed off. `engines.load()` installs it now, once per session, for every engine; the telescope sheet no longer calls `install()` by hand. `TESTS/preview_mouse_engines_spec.lua`.
+
 [x] **Mouse sheets on the real telescope and fzf-lua.** `TESTS/sheets/pickers-mouse-telescope.sheet.lua` and `pickers-mouse-fzf-lua.sheet.lua` click the real engines. The telescope one found three gaps the spec's stand-ins hid: the prompt gets its filetype only after `WinEnter` (now also bound on `FileType TelescopePrompt`; before, a right click opened the editor's PopUp menu), telescope closes the picker on the prompt's `BufLeave`, which the menu triggered (`before_menu` takes that autocmd off), and the focus did not come back to the prompt (`after_menu` on the menu's `on_close`, which also puts telescope's autocmd back and restores insert mode).
 
 [x] **Fix: every telescope file preview was empty.** `pickers.integrations.pdf_text` installs a telescope `filetype_hook`, whose answer telescope reads as "go on previewing?". It answered `false` for every file that is not a PDF, so with pickers' bindings installed no telescope file preview showed anything. Now `true` for non-PDFs, `false` for a PDF pdfport drew (pdfport answers the other way round), and the host's own hook can stop a preview. Found by the telescope mouse sheet.
