@@ -78,8 +78,10 @@ below):
   list copy all entries, send them to the quickfix list or open them in a new buffer.
 
 The right click works while you are still typing in the input field: the menu is for the row or
-preview line under the pointer, and it opens above the picker's own windows. The maps are
-buffer-local and exist only while a picker window is current.
+preview line under the pointer, and it opens above the picker's own windows. A quick second right
+click on the same spot (right click, `<Esc>`, right click again) opens it again too: Neovim reports
+that one as a double click. The maps are buffer-local and exist only while a picker window is
+current.
 
 The other engines, as far as their windows allow
 ([`preview_mouse_engines.lua`](../../lua/pickers/preview_mouse_engines.lua)):
@@ -100,3 +102,5 @@ The other engines, as far as their windows allow
 - **Sheet:** [`pickers-mouse-mdview`](../../TESTS/sheets/pickers-mouse-mdview.sheet.lua) runs
   "Preview in mdview" through the real mdview.nvim in the clicked Markdown file (the browser itself is
   not opened), and checks that a non-Markdown row has no such entry
+- **Sheet:** [`pickers-mouse-right-again-snacks`](../../TESTS/sheets/pickers-mouse-right-again-snacks.sheet.lua)
+  right-clicks a row, closes the menu with `<Esc>` and right-clicks it again at once: the menu opens again

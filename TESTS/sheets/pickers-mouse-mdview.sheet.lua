@@ -5,8 +5,6 @@
 -- no such entry.
 -- Needs snacks.nvim and mdview.nvim (.deps/, beside this repository, or the lazy.nvim directory of the real
 -- editor); the workflow checks them out.
--- The menu is closed with <Esc> only at the very end: a right click after an <Esc>-closed kit menu is sometimes
--- lost (pickers.nvim/rechtsklick-nach-einem-mit-esc-geschlossenen-kit-menue-geht).
 return {
   id = "pickers.mouse-mdview",
   feature = "pickers.mouse",

@@ -529,6 +529,10 @@ local function bind_part(win)
   end
 end
 
+---Every right click a context menu answers: single, double, triple and quadruple (Neovim counts
+---quick clicks on one cell up to four).
+local RIGHT_CLICKS = { "<RightMouse>", "<2-RightMouse>", "<3-RightMouse>", "<4-RightMouse>" }
+
 ---@param win integer
 local function bind(win)
   local part = bind_part(win)
@@ -549,13 +553,18 @@ local function bind(win)
   end
   -- the input field is in insert mode while the user types
   local modes = part == "input" and { "n", "i" } or { "n", "v" }
-  local saved = own_maps(buf, "<RightMouse>", modes)
-  vim.keymap.set(modes, "<RightMouse>", right_click, {
-    buffer = buf,
-    silent = true,
-    desc = "pickers: context menu",
-  })
-  maps[#maps + 1] = { lhs = "<RightMouse>", modes = modes, saved = saved }
+  -- A second right click on the same cell within 'mousetime' (right click, <Esc>, right click
+  -- again) arrives as <2-RightMouse>: unmapped, Neovim would take it itself (extend the selection,
+  -- or its own PopUp menu) and the context menu would not open.
+  for _, lhs in ipairs(RIGHT_CLICKS) do
+    local saved = own_maps(buf, lhs, modes)
+    vim.keymap.set(modes, lhs, right_click, {
+      buffer = buf,
+      silent = true,
+      desc = "pickers: context menu",
+    })
+    maps[#maps + 1] = { lhs = lhs, modes = modes, saved = saved }
+  end
   mapped[buf] = maps
 end
 
