@@ -106,6 +106,6 @@ return {
     { expect = [[not _G.on_screen("Reveal in filetree")]], note = "without the reveal entry" },
   },
   manual = {
-    "In the real editor with nvzone/menu installed: the same menu opens as a nvzone menu and Reveal in filetree works",
+    "In the real editor with filetree.nvim loaded: Reveal in filetree is offered and reveals the file in the tree",
   },
 }

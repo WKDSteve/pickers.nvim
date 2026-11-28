@@ -11,7 +11,7 @@ return {
   id = "pickers.mouse-mdview",
   feature = "pickers.mouse",
   title = "The mouse in a snacks picker: Preview in mdview runs the real mdview.nvim in the clicked Markdown file",
-  task = "pickers.nvim/feature-sheet-picker-menue-mit-echtem-nvzone-menu-und",
+  task = "pickers.nvim/picker-kontextmenue-weitere-kreuz-eintraege-mdview",
   engine = "rpc",
   sizes = { { rows = 30, cols = 120 } },
   requires = {
