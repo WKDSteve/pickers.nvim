@@ -75,8 +75,12 @@ return {
     {
       expect = [[(function()
         local call = _G.md_calls[1]
-        local want = vim.fs.normalize(_G.proj .. "/notes.md")
-        assert(call.name:lower() == want:lower(), ("mdview ran in %s, not in %s"):format(call.name, want))
+        -- the real path on both sides: on macOS the temp directory /var/... is /private/var/...
+        local function real(p)
+          return vim.fs.normalize(vim.uv.fs_realpath(p) or p):lower()
+        end
+        local want = _G.proj .. "/notes.md"
+        assert(real(call.name) == real(want), ("mdview ran in %s, not in %s"):format(call.name, want))
         assert(call.listed == false, "the file was not open, its buffer should stay unlisted")
         return true
       end)()]],
