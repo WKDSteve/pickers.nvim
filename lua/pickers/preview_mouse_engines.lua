@@ -115,9 +115,58 @@ function M.telescope.handle(prompt_bufnr, tp)
     self.closed = true
     require("telescope.actions").close(prompt_bufnr)
   end
+  -- the menu takes the focus, and telescope closes its picker when the prompt is left
+  function h:before_menu()
+    M.telescope.hold_open(prompt_bufnr)
+  end
+  -- the menu gives the focus back to some window: if the picker is still open, to its prompt
+  -- (that is what puts telescope's close-on-leave back, see hold_open)
+  function h:after_menu()
+    local w = tp.prompt_win
+    if w and vim.api.nvim_win_is_valid(w) and vim.api.nvim_get_current_win() ~= w then
+      pcall(vim.api.nvim_set_current_win, w)
+    end
+  end
   -- the preview shows the selected entry
   h.preview.item = h:current()
   return h
+end
+
+---Keep a telescope picker open while a menu has the focus. telescope closes the picker on the
+---prompt's `BufLeave` (group `PickerInsert`, `once`, `nested`); that autocmd is taken off and put
+---back with telescope's own callback when the focus is back in the prompt (`BufEnter`), and the
+---prompt goes back to insert mode if it was typed in.
+---@param prompt_bufnr integer
+function M.telescope.hold_open(prompt_bufnr)
+  local ok, aus = pcall(vim.api.nvim_get_autocmds, {
+    group = "PickerInsert",
+    buffer = prompt_bufnr,
+    event = "BufLeave",
+  })
+  if not ok or type(aus) ~= "table" or #aus == 0 then return end
+  local was_insert = vim.api.nvim_get_mode().mode:sub(1, 1) == "i"
+  for _, au in ipairs(aus) do
+    pcall(vim.api.nvim_del_autocmd, au.id)
+  end
+  vim.api.nvim_create_autocmd("BufEnter", {
+    buffer = prompt_bufnr,
+    once = true,
+    desc = "pickers: put telescope's close-on-leave back after the mouse menu",
+    callback = function()
+      for _, au in ipairs(aus) do
+        pcall(vim.api.nvim_create_autocmd, "BufLeave", {
+          group = "PickerInsert",
+          buffer = prompt_bufnr,
+          nested = true,
+          once = true,
+          desc = au.desc,
+          callback = au.callback,
+          command = au.callback == nil and au.command or nil,
+        })
+      end
+      if was_insert then vim.cmd("startinsert!") end
+    end,
+  })
 end
 
 ---The telescope picker owning `win`, as a handle, and which part `win` is.

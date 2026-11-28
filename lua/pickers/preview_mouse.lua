@@ -462,7 +462,17 @@ local function right_click()
   end
   local items = M.menu_items(picker, part, win)
   if not items or #items == 0 then return end
-  require("lib.nvim.contextmenu").open(items, { mouse = true })
+  -- an engine that closes its picker when the focus leaves it (telescope) holds it open
+  if type(picker.before_menu) == "function" then pcall(picker.before_menu, picker) end
+  local surf = require("lib.nvim.contextmenu").open(items, { mouse = true })
+  -- and gets the focus back once the menu is gone (an entry that closed the picker runs first)
+  if surf and type(surf.on_close) == "function" and type(picker.after_menu) == "function" then
+    surf:on_close(function()
+      vim.schedule(function()
+        pcall(picker.after_menu, picker)
+      end)
+    end)
+  end
   M.raise_above(picker)
 end
 
@@ -562,6 +572,16 @@ function M.install()
       then
         bind(vim.api.nvim_get_current_win())
       end
+    end,
+  })
+  -- telescope enters its prompt window first and sets the filetype after: WinEnter saw none
+  vim.api.nvim_create_autocmd("FileType", {
+    group = group,
+    pattern = "TelescopePrompt",
+    desc = "pickers: bind the mouse maps in a telescope prompt",
+    callback = function(args)
+      local win = vim.api.nvim_get_current_win()
+      if enabled() and vim.api.nvim_win_get_buf(win) == args.buf then bind(win) end
     end,
   })
   vim.api.nvim_create_autocmd("WinLeave", {

@@ -221,6 +221,59 @@ check(
   maparg(prompt_buf, "<RightMouse>").buffer == 1
 )
 vim.api.nvim_set_current_win(main_win)
+
+-- telescope enters the prompt window first and sets its filetype after: bound on FileType
+local late_win, late_buf = float(20)
+vim.api.nvim_set_current_win(late_win)
+check(
+  "telescope: a prompt without its filetype yet is not bound",
+  next(maparg(late_buf, "<RightMouse>")) == nil
+)
+vim.api.nvim_set_option_value("filetype", "TelescopePrompt", { buf = late_buf })
+check(
+  "telescope: setting the prompt filetype in the current window binds it",
+  maparg(late_buf, "<RightMouse>", "i").buffer == 1
+)
+vim.api.nvim_set_current_win(main_win)
+pcall(vim.api.nvim_win_close, late_win, true)
+
+-- the menu takes the focus: telescope's close-on-leave is held off and comes back in the prompt
+package.loaded["telescope.state"].get_existing_prompt_bufnrs = function()
+  return { prompt_buf }
+end
+local left = 0
+vim.api.nvim_create_augroup("PickerInsert", {})
+vim.api.nvim_create_autocmd("BufLeave", {
+  group = "PickerInsert",
+  buffer = prompt_buf,
+  nested = true,
+  once = true,
+  callback = function()
+    left = left + 1
+  end,
+})
+local function leave_autocmds()
+  return #vim.api.nvim_get_autocmds({
+    group = "PickerInsert",
+    buffer = prompt_buf,
+    event = "BufLeave",
+  })
+end
+vim.api.nvim_set_current_win(prompt_win)
+local th = pmouse.find_picker(prompt_win)
+th:before_menu()
+check("telescope: before_menu takes telescope's BufLeave off the prompt", leave_autocmds() == 0)
+vim.api.nvim_set_current_win(main_win) -- the menu has the focus
+check("telescope: leaving the prompt for the menu does not close the picker", left == 0)
+th:after_menu()
+check(
+  "telescope: after_menu puts the focus back in the prompt",
+  vim.api.nvim_get_current_win() == prompt_win
+)
+check("telescope: and telescope's BufLeave is back", leave_autocmds() == 1)
+vim.api.nvim_set_current_win(main_win)
+check("telescope: leaving the prompt afterwards closes it as before", left == 1)
+vim.api.nvim_set_current_win(main_win)
 package.loaded["telescope.state"] = nil
 package.loaded["telescope.actions"] = nil
 
