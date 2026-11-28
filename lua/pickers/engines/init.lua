@@ -11,8 +11,20 @@ local notify = require("lib.nvim.notify").create("[pickers.engines]")
 
 local M = {}
 
----Has `load()` set up the mouse of the pickers yet?
+---Has the mouse of the pickers been set up yet (`ensure_mouse`)?
 local mouse_installed = false
+
+---Set up the mouse in the preview and the result list of every engine (double click jumps, right click opens a
+---context menu), once per session. Called by `load()` and by every path that takes an engine module without it
+---(`pickers.builtins.run` with an engine named): only the module of the chosen engine is loaded, so no engine's own
+---module can do it. `cfg.preview_mouse = false` switches it off (asked when a picker window is entered, not here). A
+---failed setup is tried again next time.
+function M.ensure_mouse()
+  if mouse_installed then return end
+  mouse_installed = pcall(function()
+    require("pickers.preview_mouse").install()
+  end)
+end
 
 ---Try to load and verify an engine module.
 ---@internal
@@ -32,16 +44,7 @@ end
 ---callers (e.g. pickers.builtins) that need to pick an engine-specific
 ---implementation rather than just the pick_files/live_grep/... interface.
 function M.load(requested)
-  -- Mouse in the preview and the result list of every engine (double click jumps, right
-  -- click opens a context menu). Here and not in one engine's module: only the module of
-  -- the chosen engine is loaded. Once per session; `cfg.preview_mouse = false` switches
-  -- it off (asked when a picker window is entered, not here).
-  if not mouse_installed then
-    mouse_installed = true
-    pcall(function()
-      require("pickers.preview_mouse").install()
-    end)
-  end
+  M.ensure_mouse()
   local cfg = require("pickers.config").get()
   local want = (type(requested) == "string" and requested) or cfg.engine
 

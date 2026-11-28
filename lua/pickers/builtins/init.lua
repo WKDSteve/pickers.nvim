@@ -514,6 +514,9 @@ function M.run(name, opts, engine_name)
   if not engine_name then
     local _, resolved = require("pickers.engines").load()
     engine_name = resolved
+  else
+    -- an engine named by the caller: its module is taken without `engines.load()`, which sets up the mouse
+    require("pickers.engines").ensure_mouse()
   end
   if not engine_name then return end -- engines.load() already reported the error
 
