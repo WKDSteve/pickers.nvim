@@ -9205,16 +9205,21 @@ do
     values = {
       preview = {
         timeout = 250,
+        -- telescope's reading: true = go on previewing, false = stop
         filetype_hook = function(path)
           host_calls = host_calls + 1
-          return path == "host.txt"
+          return path ~= "host-stops.txt"
         end,
       },
     },
   }
+  local pdf_calls = 0
+  local pdf_draws = true
   package.loaded["pdfport.integrations.telescope"] = {
+    -- pdfport's reading: true = "I drew the text into the buffer"
     filetype_hook = function()
-      return "pdf"
+      pdf_calls = pdf_calls + 1
+      return pdf_draws
     end,
   }
 
@@ -9224,10 +9229,21 @@ do
     "pdf_text: hook installed, other preview settings kept",
     hook and seen.defaults.preview.timeout == 250
   )
-  check("pdf_text: the host's own hook runs first and can claim the file", hook("host.txt") == true)
-  check("pdf_text: otherwise pdfport's hook answers", hook("a.pdf") == "pdf")
-  check("pdf_text: a non-PDF is declined without asking pdfport", hook("a.lua") == false)
-  check("pdf_text: a non-string path is declined", hook(nil) == false)
+  check(
+    "pdf_text: the host's own hook runs first and can stop the preview",
+    hook("host-stops.txt") == false
+  )
+  check(
+    "pdf_text: a non-PDF goes on to telescope's own preview, without asking pdfport",
+    hook("a.lua") == true and pdf_calls == 0
+  )
+  check(
+    "pdf_text: a PDF pdfport drew stops telescope's preview",
+    hook("a.pdf") == false and pdf_calls == 1
+  )
+  pdf_draws = false
+  check("pdf_text: a PDF pdfport did not take goes on to telescope", hook("b.pdf") == true)
+  check("pdf_text: a non-string path goes on to telescope", hook(nil) == true)
 
   seen = nil
   require("pickers.integrations.pdf_text").patch({ images = { pdf_text = false } })

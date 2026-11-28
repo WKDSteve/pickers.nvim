@@ -9,9 +9,15 @@
 ---
 --- pdfport.nvim is a soft dependency and is required lazily, on the first PDF
 --- preview -- not when telescope loads -- so installing this costs nothing
---- until a PDF is actually previewed. A `filetype_hook` the host already set
---- keeps priority: it is called first, and only when it declines (returns
---- falsy) does the PDF text preview run.
+--- until a PDF is actually previewed.
+---
+--- telescope reads the hook's answer as "go on previewing?": `true` lets its own
+--- previewer show the file, `false` stops it (the hook drew the buffer itself, or
+--- the file is not to be shown). So this hook answers `true` for every file that
+--- is not a PDF, and `false` for a PDF that pdfport took (pdfport's own hook
+--- answers the other way round: `true` = "I drew it"). A `filetype_hook` the host
+--- already set keeps priority: it is called first, and when it answers `false`
+--- the preview stops there.
 ---
 --- Telescope only. fzf-lua's builtin previewer has no per-call Lua hook (a
 --- `preview` function is only consulted when no builtin previewer exists),
@@ -51,16 +57,17 @@ function M.contribute(cfg)
       local existing = preview.filetype_hook
       if existing ~= nil and existing == installed then return nil end
 
+      -- telescope's answer: true = go on with its own preview, false = stop
       installed = function(filepath, bufnr, opts)
-        if type(existing) == "function" then
-          local handled = existing(filepath, bufnr, opts)
-          if handled then return handled end
+        if type(existing) == "function" and not existing(filepath, bufnr, opts) then
+          return false
         end
         -- Cheapest test first: almost every preview is not a PDF.
-        if type(filepath) ~= "string" or not filepath:lower():match("%.pdf$") then return false end
+        if type(filepath) ~= "string" or not filepath:lower():match("%.pdf$") then return true end
         local pdf = pdfport()
-        if not pdf then return false end
-        return pdf.filetype_hook(filepath, bufnr, opts)
+        if not pdf then return true end
+        -- pdfport answers true when it drew the text into the buffer itself
+        return not pdf.filetype_hook(filepath, bufnr, opts)
       end
 
       return {
