@@ -107,5 +107,10 @@ return {
       timeout = 10000,
       note = "the picker is closed and beta.txt is open",
     },
+    {
+      wait = [[vim.api.nvim_get_mode().mode == "n"]],
+      timeout = 2000,
+      note = "in normal mode: the prompt's insert mode does not follow into the file",
+    },
   },
 }
