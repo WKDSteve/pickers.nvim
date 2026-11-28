@@ -61,7 +61,8 @@ collections, and the external tools declared in `docs/install.json`. The
 
 ## Mouse in the preview and the result list
 
-With the snacks engine, the preview and the result list react to the mouse:
+With the snacks engine, the preview and the result list react to the mouse (telescope and fzf-lua
+below):
 
 - **Double click in the preview** asks "Jump to file:line?"; on yes the picker closes and the
   file opens in a new buffer on the clicked line.
@@ -78,8 +79,17 @@ With the snacks engine, the preview and the result list react to the mouse:
 
 The right click works while you are still typing in the input field: the menu is for the row or
 preview line under the pointer, and it opens above the picker's own windows. The maps are
-buffer-local and exist only while a picker window is current. telescope and fzf-lua are not
-covered (their previews are not real windows to bind to).
+buffer-local and exist only while a picker window is current.
+
+The other engines, as far as their windows allow
+([`preview_mouse_engines.lua`](../../lua/pickers/preview_mouse_engines.lua)):
+
+- **telescope:** the right click in the result list and the preview, the same menu (the list
+  entries too). It is bound in the prompt, so it works while you type. There is no own double
+  click: telescope's own single click in the preview already opens the entry.
+- **fzf-lua** with the builtin previewer: after a click into the preview, the double click and the
+  right click work there. The result list is fzf itself in a terminal, with no rows to bind, so
+  the menu has no list entries; a shell previewer (a terminal too) is not covered.
 
 - **Module:** [`preview_mouse.lua`](../../lua/pickers/preview_mouse.lua)
 - **Config:** `preview_mouse` (default `true`)

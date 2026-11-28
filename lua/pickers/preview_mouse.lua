@@ -1,5 +1,5 @@
 ---@module 'pickers.preview_mouse'
----@brief Mouse interactions for the preview and the result list of a snacks picker.
+---@brief Mouse interactions for the preview and the result list of a picker (snacks, telescope, fzf-lua).
 ---@description
 --- * Double click in the preview: asks "jump there?" and, on yes, closes the picker and
 ---   opens the previewed file in a new buffer at the clicked line.
@@ -11,9 +11,9 @@
 ---
 --- The maps are buffer-local and live only while the picker window is the current
 --- one (`WinEnter` sets them, `WinLeave` removes them), so a previewed buffer is
---- never left with a stray map. Only the snacks engine has real preview/list
---- windows to bind to; telescope and fzf-lua are not covered. Switch off with
---- `cfg.preview_mouse = false`.
+--- never left with a stray map. snacks pickers are used as they are; telescope and
+--- fzf-lua go through a handle of the same shape (`pickers.preview_mouse_engines`, which
+--- also names their limits). Switch off with `cfg.preview_mouse = false`.
 
 local M = {}
 
@@ -30,8 +30,8 @@ end
 ---The snacks picker owning window `win`, and which part of it that is.
 ---@param win integer
 ---@return table|nil picker
----@return "preview"|"list"|nil part
-function M.find_picker(win)
+---@return "preview"|"list"|"input"|nil part
+local function find_snacks(win)
   local sp = snacks_picker_mod()
   if not sp then return nil end
   local ok, pickers = pcall(sp.get)
@@ -42,6 +42,20 @@ function M.find_picker(win)
       if p.list and p.list.win and p.list.win.win == win then return p, "list" end
       if p.input and p.input.win and p.input.win.win == win then return p, "input" end
     end
+  end
+end
+
+---The picker owning window `win` -- a snacks picker, or a handle of the same shape for
+---telescope and fzf-lua (`pickers.preview_mouse_engines`) -- and which part of it that is.
+---@param win integer
+---@return table|nil picker
+---@return "preview"|"list"|"input"|nil part
+function M.find_picker(win)
+  local p, part = find_snacks(win)
+  if p then return p, part end
+  for _, engine in ipairs(require("pickers.preview_mouse_engines").list) do
+    local ok, h, hpart = pcall(engine.find, win)
+    if ok and h then return h, hpart end
   end
 end
 
@@ -402,16 +416,18 @@ function M.menu_items(picker, part, win)
       copy(table.concat(vim.fn.readfile(file), "\n"))
     end)
   )
+  -- an engine whose list is not readable (fzf-lua: fzf in a terminal) has no `items`
+  local has_items = type(picker.items) == "function"
   cm.group(
     out,
     cm.heading("List"),
-    cm.entry(true, "Copy all entries", function()
+    cm.entry(has_items, "Copy all entries", function()
       copy(table.concat(list_lines(picker), "\n"))
     end),
-    cm.entry(true, "Send all entries to quickfix", function()
+    cm.entry(has_items, "Send all entries to quickfix", function()
       list_to_quickfix(picker)
     end),
-    cm.entry(true, "Open all entries in a new buffer", function()
+    cm.entry(has_items, "Open all entries in a new buffer", function()
       list_to_buffer(picker)
     end)
   )
@@ -482,10 +498,23 @@ local function unmap(buf)
   mapped[buf] = nil
 end
 
+---The part of a picker `win` is for binding: snacks asked directly, the other engines by a cheap
+---test (a telescope prompt can be entered before telescope has filed the picker).
+---@param win integer
+---@return "preview"|"list"|"input"|nil
+local function bind_part(win)
+  local _, part = find_snacks(win)
+  if part then return part end
+  for _, engine in ipairs(require("pickers.preview_mouse_engines").list) do
+    local ok, p = pcall(engine.classify, win)
+    if ok and p then return p end
+  end
+end
+
 ---@param win integer
 local function bind(win)
-  local picker, part = M.find_picker(win)
-  if not picker then return end
+  local part = bind_part(win)
+  if not part then return end
   local buf = vim.api.nvim_win_get_buf(win)
   unmap(buf)
   local maps = {}
@@ -518,7 +547,7 @@ function M.install()
   local group = vim.api.nvim_create_augroup(augroup, { clear = true })
   vim.api.nvim_create_autocmd("WinEnter", {
     group = group,
-    desc = "pickers: bind mouse maps in a snacks picker's input, list and preview",
+    desc = "pickers: bind mouse maps in a picker's input, list and preview (snacks, telescope, fzf-lua)",
     callback = function()
       local ft = vim.bo.filetype
       if
@@ -527,6 +556,8 @@ function M.install()
           vim.w.snacks_picker_preview
           or ft == "snacks_picker_list"
           or ft == "snacks_picker_input"
+          or ft == "TelescopePrompt"
+          or vim.w.fzf_lua_preview
         )
       then
         bind(vim.api.nvim_get_current_win())
