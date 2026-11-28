@@ -48,6 +48,7 @@ return {
     "SNACKS_NVIM_DIR",
     "UI_NVIM_DIR",
     "GITSUITE_NVIM_DIR",
+    "MDVIEW_NVIM_DIR",
   },
   -- A test sheet is one case that starts a child editor and a real picker (fzf is a process of its own); under load
   -- that takes longer than the default 10 s.
@@ -100,6 +101,12 @@ return {
           repo = "WKDSteve/gitsuite.nvim",
           ref = "ci-verified",
           why = "the real blame of the menu entry Blame this line (sheet pickers-mouse-blame-gitsuite)",
+        },
+        {
+          repo = "WKDSteve/mdview.nvim",
+          -- no ci-verified branch there: a main commit whose CI is green (run 46078009277)
+          ref = "15a33eb9b2c088e19990b481b629fff28a34d44b",
+          why = "the real mdview.open of the menu entry Preview in mdview (sheet pickers-mouse-mdview)",
         },
       },
       packages = {

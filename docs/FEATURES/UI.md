@@ -97,3 +97,6 @@ The other engines, as far as their windows allow
   with the mouse on the real snacks picker and the real filetree.nvim
 - **Sheet:** [`pickers-mouse-blame-gitsuite`](../../TESTS/sheets/pickers-mouse-blame-gitsuite.sheet.lua)
   blames a preview line through the real gitsuite.nvim in a real git repository
+- **Sheet:** [`pickers-mouse-mdview`](../../TESTS/sheets/pickers-mouse-mdview.sheet.lua) runs
+  "Preview in mdview" through the real mdview.nvim in the clicked Markdown file (the browser itself is
+  not opened), and checks that a non-Markdown row has no such entry

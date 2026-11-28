@@ -144,6 +144,14 @@ jobs:
           repository: WKDSteve/gitsuite.nvim
           path: .deps/gitsuite.nvim
           ref: ci-verified
+      # the real mdview.open of the menu entry Preview in mdview (sheet pickers-mouse-mdview)
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          repository: WKDSteve/mdview.nvim
+          path: .deps/mdview.nvim
+          # Pinned: a commit whose own CI was green (no ci-verified branch to follow). Bump on purpose.
+          ref: 15a33eb9b2c088e19990b481b629fff28a34d44b
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
