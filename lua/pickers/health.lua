@@ -22,6 +22,12 @@ local function check_soft_dependencies()
   local deps = {
     { "fileops.ops.file", "fileops.nvim", "explorer refresh after browse-picker file changes" },
     { "gopath.env_shorten", "gopath.nvim", "$VAR-shortened paths in inserted markdown links" },
+    { "mdview", "mdview.nvim", '"Preview in mdview" in the right-click menu of a picker' },
+    {
+      "gitsuite.features.blame",
+      "gitsuite.nvim",
+      '"Blame this line (gitsuite)" in the right-click menu of a picker',
+    },
     { "lazy.core.config", "lazy.nvim", "engine patches wait for the plugin load event" },
   }
   for _, dep in ipairs(deps) do
