@@ -64,7 +64,7 @@ collections, and the external tools declared in `docs/install.json`. The
 With the snacks engine, the preview and the result list react to the mouse (telescope and fzf-lua
 below):
 
-- **Double click in the preview** asks "Jump to file:line?"; on yes the picker closes and the
+- **Double click in the preview** asks "Jump to file:line?" in the kit dialog of `lib.nvim.ui.dialog` ("No" is the default); on yes the picker closes and the
   file opens in a new buffer on the clicked line.
 - **Right click in the preview or the list** opens a context menu (needs
   `lib.nvim.contextmenu`, which ui.nvim re-exports): open in the current window, split, vsplit or

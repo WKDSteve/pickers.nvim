@@ -174,12 +174,22 @@ check(
 )
 
 -- ── double click: confirm, then jump ────────────────────────────────────────
-vim.api.nvim_win_set_cursor(preview_win, { 3, 0 })
+-- asked through lib.nvim.ui.dialog (UI-63), never with the native confirm()
+local dialog = require("lib.nvim.ui.dialog")
+local real_yesno = dialog.yesno
 local asked
-vim.fn.confirm = function(msg)
-  asked = msg
+local answer_yes = false
+---@diagnostic disable-next-line: duplicate-set-field
+dialog.yesno = function(question, _, cb)
+  asked = question
+  cb(answer_yes)
+end
+local native_asked = false
+vim.fn.confirm = function()
+  native_asked = true
   return 2
 end
+vim.api.nvim_win_set_cursor(preview_win, { 3, 0 })
 pmouse.preview_double_click(preview_win)
 vim.wait(100)
 check(
@@ -188,10 +198,9 @@ check(
 )
 check("double click, answer no: picker stays open", closed == 0)
 check("double click, answer no: no buffer opened", current_file() ~= real(file))
+check("double click: asked through lib.nvim.ui.dialog, not confirm()", not native_asked)
 
-vim.fn.confirm = function()
-  return 1
-end
+answer_yes = true
 pmouse.preview_double_click(preview_win)
 vim.wait(500, function()
   return current_file() == real(file)
@@ -207,10 +216,7 @@ vim.api.nvim_buf_set_lines(preview_buf, 0, -1, false, { "(mode text)", "other", 
 vim.api.nvim_win_set_cursor(preview_win, { 2, 0 })
 picker.preview.item = { file = file, pos = { 4, 0 } }
 asked = nil
-vim.fn.confirm = function(msg)
-  asked = msg
-  return 2
-end
+answer_yes = false
 pmouse.preview_double_click(preview_win)
 check(
   "foreign preview text: jumps to the item's own line, not the preview row",
@@ -219,6 +225,7 @@ check(
 )
 vim.api.nvim_buf_set_lines(preview_buf, 0, -1, false, { "one", "two", "three", "four" })
 picker.preview.item = { file = file }
+dialog.yesno = real_yesno
 
 -- ── the feature can be switched off, also after the engine loaded ───────────
 vim.api.nvim_set_current_win(preview_win)

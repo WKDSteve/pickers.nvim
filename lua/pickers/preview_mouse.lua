@@ -152,7 +152,8 @@ local function preview_target(picker, win)
   return file, row
 end
 
----Double click in the preview: confirm, then jump.
+---Double click in the preview: confirm, then jump. Asked through lib.nvim.ui.dialog (the themed
+---kit dialog of the family, UI-63); "No" is the default, the answer comes back later.
 ---@param win integer
 function M.preview_double_click(win)
   local picker = M.find_picker(win)
@@ -160,9 +161,11 @@ function M.preview_double_click(win)
   local file, line = preview_target(picker, win)
   if not file or vim.fn.filereadable(file) ~= 1 then return end
   local label = ("%s:%d"):format(vim.fn.fnamemodify(file, ":~:."), line or 1)
-  if vim.fn.confirm(("Jump to %s?"):format(label), "&Yes\n&No", 2) ~= 1 then return end
-  after_close(picker, function()
-    M.open_file(file, line, "edit")
+  require("lib.nvim.ui.dialog").yesno(("Jump to %s?"):format(label), nil, function(yes)
+    if not yes then return end
+    after_close(picker, function()
+      M.open_file(file, line, "edit")
+    end)
   end)
 end
 

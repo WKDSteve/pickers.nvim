@@ -10,8 +10,6 @@ return {
   title = "The mouse in the fzf-lua preview: right click opens the context menu, a double click jumps",
   task = "pickers.nvim/feature-sheet-maus-menue-auf-echtem-telescope-und-fzf-lua",
   engine = "rpc",
-  -- the double click asks with confirm(); answered by the sheet, not "cancelled" at once
-  prompts = "real",
   sizes = { { rows = 30, cols = 120 } },
   requires = {
     {
@@ -106,8 +104,13 @@ return {
     },
     { wait = [[vim.api.nvim_get_current_win() == _G.pwin]], timeout = 5000 },
     { lua = [[_G.click("left", _G.want, 2, _G.pwin)]], note = "double click on the second line" },
-    { prompt = "confirm", timeout = 5000, note = "it asks whether to jump there" },
-    { input = "Y", note = "answer yes" },
+    {
+      -- the kit dialog of lib.nvim.ui.dialog (UI-63), "No" first and the default
+      wait = [[_G.on_screen("Jump to ") and _G.on_screen("Yes") and _G.on_screen("No")]],
+      timeout = 5000,
+      note = "it asks whether to jump there, in the kit dialog",
+    },
+    { input = "y", note = "answer yes with its hotkey" },
     {
       wait = [[_G.fw() == nil and vim.api.nvim_win_get_cursor(0)[1] == 2
         and vim.fn.readfile(vim.api.nvim_buf_get_name(0))[2] == _G.want]],

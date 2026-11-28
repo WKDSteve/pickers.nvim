@@ -362,16 +362,18 @@ check(
 check("fzf-lua: and <RightMouse>", maparg(fpreview_buf, "<RightMouse>").buffer == 1)
 
 -- double click: asks, closes fzf-lua, opens the file on the clicked line
-local real_confirm = vim.fn.confirm
-vim.fn.confirm = function()
-  return 1
+local dialog = require("lib.nvim.ui.dialog")
+local real_yesno = dialog.yesno
+---@diagnostic disable-next-line: duplicate-set-field
+dialog.yesno = function(_, _, cb)
+  cb(true)
 end
 vim.api.nvim_win_set_cursor(fpreview_win, { 3, 0 })
 pmouse.preview_double_click(fpreview_win)
 local jumped = vim.wait(500, function()
   return real(vim.api.nvim_buf_get_name(0)) == real(file)
 end)
-vim.fn.confirm = real_confirm
+dialog.yesno = real_yesno
 check("fzf-lua: double click closes the picker", fzf_closed == 1, fzf_closed)
 check(
   "fzf-lua: and opens the file on the clicked line",
