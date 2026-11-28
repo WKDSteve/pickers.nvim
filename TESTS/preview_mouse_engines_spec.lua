@@ -223,6 +223,25 @@ check(
 vim.api.nvim_set_current_win(main_win)
 package.loaded["telescope.state"] = nil
 package.loaded["telescope.actions"] = nil
+
+-- telescope installed but not loaded (lazy.nvim): asking for a picker must not load it
+local telescope_loaded = false
+package.preload["telescope.state"] = function()
+  telescope_loaded = true
+  return {
+    get_existing_prompt_bufnrs = function()
+      return {}
+    end,
+    get_status = function()
+      return {}
+    end,
+  }
+end
+pmouse.find_picker(results_win)
+check("telescope not loaded: finding a picker does not load it", not telescope_loaded)
+package.preload["telescope.state"] = nil
+package.loaded["telescope.state"] = nil
+
 for _, w in ipairs({ prompt_win, results_win, preview_win }) do
   pcall(vim.api.nvim_win_close, w, true)
 end

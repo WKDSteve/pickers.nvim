@@ -49,12 +49,14 @@ function M.telescope.item(entry)
   return item
 end
 
----The open telescope pickers, from its global state (no require of telescope itself).
+---The open telescope pickers, from its global state. Never a require: with telescope not yet
+---loaded no telescope picker can be open, and a require would load it (lazy.nvim) on a right
+---click in any other picker.
 ---@return table[]  # { prompt_bufnr, picker }
 local function telescope_pickers()
   local out = {}
-  local ok, state = pcall(require, "telescope.state")
-  if not ok or type(state) ~= "table" or type(state.get_existing_prompt_bufnrs) ~= "function" then
+  local state = package.loaded["telescope.state"]
+  if type(state) ~= "table" or type(state.get_existing_prompt_bufnrs) ~= "function" then
     return out
   end
   local okb, bufs = pcall(state.get_existing_prompt_bufnrs)
